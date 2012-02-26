@@ -44,25 +44,25 @@ int main(int argc,char ** argv){
     fileName = filePath + filename_s;
     filename_l = strlen(fileName);
 
-    printf("filename is %s\n",fileName);
-    printf("file size is %u\n",st_size);
+    printf("Target filename: %s\n",fileName);
+    printf("Target file size: %u\n",st_size);
     if(inet_aton(argv[1],&addr) == 0){
         perror("Wrong address");
         exit(0);
     }
     port = atoi(argv[2]);
-    printf("ip addr = %s:%u\n",inet_ntoa(addr),port);
+    printf("Tracker IP = %s:%u\n",inet_ntoa(addr),port);
 
     
     fd = open(argv[4],O_RDWR | O_CREAT | O_TRUNC,0777);
     if(fd < 0){
         puts(argv[4]);
-        perror("error");
+        perror("Open torrent file for write");
         exit(0);
     }
 
     if(pipe(fds)){
-        perror("a");
+        perror("Construct pipe between two process");
         exit(0);
     }
 
@@ -78,7 +78,8 @@ int main(int argc,char ** argv){
             tmp[9] = 0;
             sscanf(tmp,"%p",(void**)&fileID);
             printf("fileID = %X\n",fileID);
-            kill(pid,SIGKILL);
+            wait(NULL);
+//            kill(pid,SIGKILL);
         }
         else{
             exit(0);
@@ -90,7 +91,7 @@ int main(int argc,char ** argv){
         write(fd,&filename_l,4);
         write(fd,fileName,filename_l);
         write(fd,&st_size,4);
-        
+        printf("Torrent file is generated. \n");
     }
     else{
         close(fds[0]);
