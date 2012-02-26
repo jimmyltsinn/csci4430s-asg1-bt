@@ -28,9 +28,10 @@ int main(int argc,char ** argv){
     
 
     if(argc != 5){
-        printf("Usage: ./tgen ip port filePath filename\n");
+        printf("Usage: ./%s trackerIP trackerPort filepath torrentFilename\n", argv[0]);
         exit(0);
     }
+
     filePath = argv[3];
     if(stat(filePath,&fileInfo) != 0){
         perror(filePath);
@@ -44,14 +45,14 @@ int main(int argc,char ** argv){
     fileName = filePath + filename_s;
     filename_l = strlen(fileName);
 
-    printf("Target filename: %s\n",fileName);
-    printf("Target file size: %u\n",st_size);
+    printf("Target filename: \t%s\n",fileName);
+    printf("Target file size: \t%u\n",st_size);
     if(inet_aton(argv[1],&addr) == 0){
         perror("Wrong address");
         exit(0);
     }
     port = atoi(argv[2]);
-    printf("Tracker IP = %s:%u\n",inet_ntoa(addr),port);
+    printf("Tracker IP: \t\t%s:%u\n",inet_ntoa(addr),port);
 
     
     fd = open(argv[4],O_RDWR | O_CREAT | O_TRUNC,0777);
@@ -77,7 +78,7 @@ int main(int argc,char ** argv){
         if(count == 8){
             tmp[9] = 0;
             sscanf(tmp,"%p",(void**)&fileID);
-            printf("fileID = %X\n",fileID);
+            printf("fileID: \t\t%X\n",fileID);
             wait(NULL);
 //            kill(pid,SIGKILL);
         }
