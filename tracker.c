@@ -179,7 +179,7 @@ void handle_client(int sockfd){
     if(command[0] == 0x01){
         process_setup(sockfd);
     }
-    if(command[0] == 0x02){
+    if(command[0] == 0x03){
         process_unreg(sockfd);
     }
     if(command[0] == 0x04){
@@ -242,22 +242,26 @@ int list(){
     }
     pthread_mutex_unlock(&files_mutex);
 }
+
 int command(){
     char command[100];
-    while(1){
-        if(fgets(command,100,stdin) != NULL){
-            if(memcmp(command,"list",4) == 0){
+    while(1) {
+        printf(">> ");
+        if (fgets(command,100,stdin) != NULL) {
+            if (memcmp(command,"list",4) == 0) {
                 list();
-            }
-            else if(memcmp(command,"exit",4) == 0){
+            } else if (memcmp(command,"exit",4) == 0) {
+                printf("Bye\n");
                 exit(0);
+            } else {
+                printf("Invalid command. \n");
             }
-        }
-        else{
+        } else {
             exit(0);
         }
     }
 }
+
 int main(int argc, char * argv[]){
     memset(files,0,sizeof(files));
     pthread_t thread_accept;
@@ -266,5 +270,7 @@ int main(int argc, char * argv[]){
         exit(0);
     }
     pthread_create(&thread_accept,NULL,(void * (*)(void *))accept_thread,(void*)atoi(argv[1]));
+    printf("Tracker Process\n");
+    printf("Port number: %s\n", argv[1]);
     command();
 }
