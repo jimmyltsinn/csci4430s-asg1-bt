@@ -17,7 +17,7 @@ void show_help() {
     return; 
 }
 
-char input_str[][9] = { "add", "seed", "subseed", 
+char commands[][9] = { "add", "seed", "subseed", 
                         "stop", "resume", "progress", 
                         "peer", "help", "exit"
                       };
@@ -65,8 +65,8 @@ int main(int argc, char **argv) {
 
         while (!ipt) {
             if (i > 9) break;
-            printf("%s vs %s\n", cmd[0], input_str[i]);
-            if (!strcmp(cmd[0], input_str[i])) {
+            printf("%s vs %s\n", cmd[0], commands[i]);
+            if (!strcmp(cmd[0], commands[i])) {
                 ipt = i + 1;
                 break;
             }

@@ -13,34 +13,33 @@
 #include <signal.h>
 //#include <ncurses.h>
 
-ssize_t RecvN(int sockfd, void *buf, size_t len, int flags){
+ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
     fd_set rfds;
     struct timeval tv;
     int retval;
     int read_len = 0;
-    char * ptr = (char*)buf;
+    char *ptr = (char*)buf;
 
     FD_ZERO(&rfds);
     FD_SET(sockfd, &rfds);
+
     tv.tv_sec = 2;
     tv.tv_usec = 0;
-    while(read_len < len){
+
+    while (read_len < len) {
         retval = select(1, &rfds, NULL, NULL, &tv);
-        if (retval == -1){
+        if (retval == -1) {
             perror("select()");
-        }
-        else if (retval){
+        } else if (retval) {
             int l;
             l = read(sockfd,ptr,len - read_len);
-            if(l > 0){
+            if (l > 0) {
                 ptr += l;
                 read_len+=l;
-            }
-            else if(l <= 0){
+            } else if (l <= 0) {
                 return read_len;
             }
-        }
-        else{
+        } else {
             printf("No data within 2 seconds.\n");
             return 0;
         }
@@ -48,20 +47,24 @@ ssize_t RecvN(int sockfd, void *buf, size_t len, int flags){
 
     return 0;
 }
-void accept_thread(int portno){
+
+void accept_thread (int portno) {
     int sockfd, newsockfd;
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t clilen;
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
-        error("ERROR opening socket");
+        error("accept_thread() -> socket()");
+    
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
+    
     if (bind(sockfd, (struct sockaddr *) &serv_addr,
                 sizeof(serv_addr)) < 0) {
-        error("ERROR on binding");
+        error("accept_thread() -> bind()");
         exit(0);
     }
 
@@ -71,7 +74,7 @@ void accept_thread(int portno){
             (struct sockaddr *) &cli_addr, 
             &clilen);
     if (newsockfd < 0){
-        error("ERROR on accept");
+        error("accept_thread() -> accept()");
     }
     {
         char msg[2];
@@ -89,10 +92,6 @@ void accept_thread(int portno){
 }
 
 int main(int argc, char * argv[]){
-    if(argc != 4){
-        puts("Usage ./peer serverip serverPort myPort");
-        exit(0);
-    }
     struct sockaddr_in serv_addr;
     int sockfd;
     char command[100];
@@ -100,23 +99,31 @@ int main(int argc, char * argv[]){
     short myPort = atoi(argv[3]);
     short serverPort = atoi(argv[2]);
     int fileID = htonl(0x12345678);
-    pthread_create(&thread_accept,NULL,accept_thread,myPort);
+    
+    if (argc != 4) {
+        printf("Usage %s serverip serverPort myPort\n", argv[0]);
+        exit(0);
+    }
+    
+    pthread_create(&thread_accept, NULL, accept_thread, myPort);
 
-    inet_aton(argv[1],&serv_addr.sin_addr);
+    inet_aton(argv[1], &serv_addr.sin_addr);
     serv_addr.sin_port = htons(serverPort);
     serv_addr.sin_family = AF_INET;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-       perror("ERROR connecting");
+    
+    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+       perror("main() -> connect()");
     }
+    
     command[0] = 0x1;
     command[1] = 3;
     myPort = htons(myPort);
-    memcpy(command+2,&serv_addr.sin_addr,4);
-    memcpy(command+2+4,&myPort,2);
-    memcpy(command+2+4+2,&fileID,4);
-    write(sockfd,command,2+4+2+4);
-    read(sockfd,command,2);
-    printf("msg = %x\n",command[0]);
+    memcpy(command+2, &serv_addr.sin_addr, 4);
+    memcpy(command+2+4, &myPort, 2);
+    memcpy(command+2+4+2, &fileID, 4);
+    write(sockfd, command, 2+4+2+4);
+    read(sockfd, command, 2);
+    printf("msg = %x\n", command[0]);
     close(sockfd);
 }
