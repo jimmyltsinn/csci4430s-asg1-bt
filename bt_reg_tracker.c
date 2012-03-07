@@ -6,6 +6,15 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
+union {
+    int whole;
+    char sub[4];
+} ip;
+
+unsigned int fileID = 0;
+struct in_addr tip;
+unsigned short tport = 0;
+
 ssize_t RecvN(int sockfd, void *buf, size_t len) {
     fd_set rfds;
     struct timeval tv;
@@ -62,28 +71,20 @@ int init_connect(struct in_addr ip, const unsigned short port) {
     return sockfd;
 }
 
-int tracker_test_reply(int sockfd) {
-    char msg[2];
-    
-    printf("-- Reply peer test --\n");
-    
-    msg[0] = 0x12;
-    msg[1] = 0;
-    write(sockfd, msg, 2);
-    
-    getchar();
-    printf("-- Reply peer test END --\n");
-    return 0;
-}
-
-int tracker_reg(int sockfd, int fileID) {
+int tracker_reg() {
     char msg[12];
     struct sockaddr_in tmp;
     int tmplen = sizeof(tmp);
     char localip[16];
     unsigned short port;
+    int sockfd; 
 
     printf("-- Peer register --\n");
+
+    sockfd = init_connect(tip, tport);
+
+    if (sockfd < 0)
+        return -1;
 
     if (getsockname(sockfd, (struct sockaddr*)&tmp, &tmplen)) {
         perror("getsockname()");
@@ -107,21 +108,56 @@ int tracker_reg(int sockfd, int fileID) {
     memcpy(msg + 2 + 4 + 2, &fileID, 4);
     
     write(sockfd, msg, 12);
-    
-    getchar();
-    printf("-- Peer register END --\n");
-    return 0;
+   
+    RecvN(sockfd, msg, 2);
+    if (msg[0] != 0x02 || msg[1]) {
+        puts("Wrong type response ... Check the tracker. a");
+        close(sockfd);
+        return -1;
+    }
+
+    msg[0] = 0x12;
+    msg[1] = 0;
+    write(sockfd, msg, 2);
+
+    RecvN(sockfd, msg, 2);
+    if (msg[1]) {
+        puts("Wrong type response ... Check the tracker. b");
+        close(sockfd);
+        return -1;
+    }
+
+    switch (msg[0]) {
+        case 0x11: 
+            puts("Peer has registered to tracker successfully. ");
+            close(sockfd);
+            return 0;
+        case 0x21: 
+            puts("Peer could not be registered to tracker. ");
+            break;
+        default: 
+            puts("Wrong type response ... Check the tracker. c");
+    }
+
+    close(sockfd);
+    return -1;
 }
 
-int tracker_unreg(int sockfd, int fileID) {
+int tracker_unreg() {
     char msg[12];
     struct sockaddr_in tmp;
     int tmplen = sizeof(tmp);
     char localip[16];
     unsigned short port;
+    int sockfd;
 
     printf("-- Peer unregister --\n");
 
+    sockfd = init_connect(tip, tport);
+
+    if (sockfd < 0)
+        return -1;
+    
     if (getsockname(sockfd, (struct sockaddr*)&tmp, &tmplen)) {
         perror("getsockname()");
         return -1;
@@ -145,16 +181,29 @@ int tracker_unreg(int sockfd, int fileID) {
     
     write(sockfd, msg, 12);
    
-    getchar(); 
-    printf("-- Peer unregister END --\n");
+    RecvN(sockfd, msg, 2);
+    if (msg[0] != 0x13 || msg[1]) {
+        puts("Wrong type response ... Check the tracker. ");
+        return -1;
+    }
+    
+    puts("Peer has successfully unregistered from tracker. ");
     return 0;
 }
 
-int tracker_list_request(int sockfd) {
+int tracker_list() {
     char msg[6];
-    int fileID;
+    int i, sockfd, n;
 
-//TODO Get the file ID
+    unsigned int *ips;
+    unsigned short *ports;
+
+
+    puts("-- Tracker List Request --");
+    sockfd = init_connect(tip, tport);
+
+    if (sockfd < 0)
+        return -1;
 
     fileID = htonl(fileID);
     msg[0] = 0x04;
@@ -162,47 +211,26 @@ int tracker_list_request(int sockfd) {
     memcpy(msg + 2, &fileID, 4);
     write(sockfd, msg, 6);
 
-    return 0;
-}
-
-int tracker_list_retrive(int sockfd, int argc) {
-    unsigned int *ips;
-    unsigned short *ports; 
-    int i;
-
-    for (i = 0; i < argc; ++i) {
-        RecvN(sockfd, ips + i, 4);
-        RecvN(sockfd, ports + i, 2);
-        printf("[%d] %d.%d.%d.%d : %d", i, (char) *((int*)(ips + i)), (char) *((int*) (ips + i) + 1), (char) *((int*) (ips + i) + 2), (char) *((int*) (ips + i) + 3), ports[i]);
+    RecvN(sockfd, msg, 2);
+    if (msg[0] != 0x14) {
+        puts("Wrong type response ... Check the tracker. ");
+        close(sockfd);
+        return -1;
     }
-     
-    return 0;
-}
+    n = msg[1];
 
-void tracker_response(int sockfd) {
-    char cmd[2];
-    RecvN(sockfd, cmd, 2);
-    int ret;
+    ips = malloc(sizeof(unsigned int) * n);
+    ports = malloc(sizeof(unsigned short) * n);
 
-    switch(cmd[0]) {
-        case 0x11: 
-            puts("Registration succeed. ");
-            break;
-        case 0x21: 
-            puts("Registration failed. ");
-            break;
-        case 0x02: 
-            tracker_test_reply(sockfd);
-            break;
-        case 0x13: 
-            puts("Unregistration succeed. ");
-            break;
-        case 0x14: 
-            puts("Retrive download list ... ");
-            tracker_list(sockfd, cmd[1]);
-            break;
-        default: 
-            puts("!! I cannot know WTF tracker is saying. ");
+    for (i = 0; i < n; ++i) {
+        char tmp[4];
+
+        read(sockfd, ips + i, 4);
+        read(sockfd, ports + i, 2);
+        
+        *tmp = ntohl(ips[i]);
+
+        printf("[%d] %d.%d.%d.%d : %d\n", i, tmp[0], tmp[1], tmp[2], tmp[3], ntohs(ports[i]));
     }
 
     close(sockfd);
@@ -220,25 +248,10 @@ int main(int argc, char **argv) {
         exit(0);
     }
     
-    inet_aton(argv[1], &tracker_ip);
-    sockfd = init_connect(tracker_ip, atoi(argv[2]));
+    inet_aton(argv[1], &tip);
+    tport = htons(atoi(argv[2]));
 
-    tracker_reg(sockfd, 0x12345678);
-
-    buf = malloc(sizeof(char) * 2);
-    RecvN(sockfd, buf, 2);
-    if (buf[0] != 0x02)
-        goto out;    
-    free(buf);
-
-    tracker_test_reply(sockfd);
-    buf = malloc(sizeof(char) * 2);
-    if (buf[0] != 0x11)
-        goto out;
-    free(buf);
-
-    tracker_unreg(sockfd, 0x12345678);
-
+    tracker_reg();
 
     getchar();
 out: 
