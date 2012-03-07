@@ -80,12 +80,10 @@ int main(int argc,char ** argv){
             sscanf(tmp,"%p",(void**)&fileID);
             printf("fileID: \t\t%X\n",fileID);
             wait(NULL);
-//            kill(pid,SIGKILL);
-        }
-        else{
+        } else {
+            printf("Error in md5\n");
             exit(0);
         }
-
         write(fd,&fileID,4);
         write(fd,&addr.s_addr,4);
         write(fd,&port,2);
@@ -93,16 +91,14 @@ int main(int argc,char ** argv){
         write(fd,fileName,filename_l);
         write(fd,&st_size,4);
         printf("Torrent file is generated. \n");
-    }
-    else{
+    } else {
         close(fds[0]);
         close(1);
         dup(fds[1]);
-        execlp("md5sum","md5sum",argv[3],NULL);
-        execlp("md5","md5sum",argv[3],NULL);
+        execlp("md5sum", "md5sum", argv[3], NULL);
+        execlp("md5", "md5sum", argv[3], NULL);
         printf("Your system done have md5sum or md5???\n");
     }
-
 
     return 0;
 }

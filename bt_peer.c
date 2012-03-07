@@ -22,6 +22,43 @@ char commands[][9] = { "add", "seed", "subseed",
                         "peer", "help", "exit"
                       };
 
+ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
+    fd_set rfds;
+    struct timeval tv;
+    int retval;
+    int read_len = 0;
+    char *ptr = (char*) buf;
+
+    FD_ZERO(&rfds);
+    FD_SET(sockfd, &rfds);
+    
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+
+    while (read_len < len) {
+        retval = select(1, &rfds, NULL, NULL, &tv);
+        if (retval < 0) {
+            perror("select()");
+            return read_len;
+        }
+        if (retval) {
+            int l;
+            l = read(sockfd, ptr, len - read_len);
+            if (l > 0) {
+                ptr += l;
+                read_len += l;
+            } else {
+                return read_len;
+            }
+        } else {
+            printf("RecvN() [%d] No data within 2 secs. \n", sockfd);
+            return read_len;
+        }
+    }
+    printf("Reaching the end of RecvN() [%d] ... Something goes wrong ??\n", sockfd);
+    return read_len;
+}
+
 int main(int argc, char **argv) {
     char status[20];
     int mode = 0;

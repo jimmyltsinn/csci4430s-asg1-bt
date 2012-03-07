@@ -11,7 +11,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
-//#include <ncurses.h>
 
 ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
     fd_set rfds;
@@ -101,7 +100,7 @@ int main(int argc, char * argv[]){
     int fileID = htonl(0x12345678);
     
     if (argc != 4) {
-        printf("Usage %s serverip serverPort myPort\n", argv[0]);
+        printf("Usage ./%s serverip serverPort myPort\n", argv[0]);
         exit(0);
     }
     
@@ -126,4 +125,7 @@ int main(int argc, char * argv[]){
     read(sockfd, command, 2);
     printf("msg = %x\n", command[0]);
     close(sockfd);
+    printf("End of main\n");
+    while(1);
+    return 0;
 }
