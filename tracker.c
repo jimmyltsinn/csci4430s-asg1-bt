@@ -66,12 +66,39 @@ void client_fail(int clientfd){
 
 void process_setup(int sockfd){
 #undef CommandLen
-#define CommandLen (4+2+4)
+#define CommandLen (4+2+4+12)
     char command[CommandLen];
-    if (RecvN(sockfd,command,CommandLen,0) != CommandLen) {
+    if(RecvN(sockfd,command,CommandLen,0) != CommandLen){
         close(sockfd);
         pthread_exit(0);
     }
+    else{
+        char command_tmp[10], *ptr;
+        ptr = command_tmp;
+        if(!(ntohl(*(unsigned*)command) == 4)){
+            puts("Failed1");
+            close(sockfd);
+            pthread_exit(0);
+        }
+        if(!(ntohl(*(unsigned*)(command +  8)) == 2)){
+            puts("Failed2");
+            close(sockfd);
+            pthread_exit(0);
+        }
+        if(!(ntohl(*(unsigned*)(command +  14)) == 4)){
+            puts("Failed3");
+            close(sockfd);
+            pthread_exit(0);
+        }
+        memcpy(ptr,command+4,4);
+        ptr+=4;
+        memcpy(ptr,command+12,2);
+        ptr+=2;
+        memcpy(ptr,command+18,4);
+        memcpy(command,command_tmp,sizeof(command_tmp));
+
+    }
+
     int clientSockfd, portno, n;
     struct sockaddr_in serv_addr;
     char client_test[2] = {0x2, 0};
@@ -132,19 +159,22 @@ finished:
     pthread_mutex_unlock(&files_mutex);
 }
 void process_downloadlist(int sockfd){
-    char fileID[4];
-    char msgBuf[255 * 6 + 100];
-    char *ptr = msgBuf + 2;
+    char fileID[8];
+    char msgBuf[255*10+100];
+    char * ptr = msgBuf + 2;
     unsigned char count = 0;
+    unsigned len = htonl(4);
     if(RecvN(sockfd, fileID, 4, 0) != 4){
         client_fail(sockfd);
     }
 
     pthread_mutex_lock(&files_mutex);
     for(int i = 0; i < FILES_MAX; i++){
-        if(memcmp(files[i] + 6, fileID, 4) == 0){
-            memcpy(ptr, files[i], 6);
-            ptr += 6;
+        if(memcmp(files[i] + 6,fileID+4,4) == 0){
+            memcpy(ptr,&len,4);
+            ptr+=4;
+            memcpy(ptr,files[i],6);
+            ptr+=6;
             count++;
         }
     }
@@ -152,14 +182,40 @@ void process_downloadlist(int sockfd){
     msgBuf[1] = count;
 
     pthread_mutex_unlock(&files_mutex);
-    write(sockfd, msgBuf, count * 6 + 2);
+    write(sockfd,msgBuf,count * 10 + 2);
     close(sockfd);
 }
 
 void process_unreg(int sockfd){
-    char info[10];
-    if(RecvN(sockfd, &info, 10, 0) != 10){
+    char info[22];
+    if(RecvN(sockfd,&info,10,0) != 10){
         client_fail(sockfd);
+    }
+    else{
+        char command_tmp[10], *ptr;
+        ptr = command_tmp;
+        if(!(ntohl(*(unsigned*)info) == 4)){
+            puts("Failed1");
+            close(sockfd);
+            pthread_exit(0);
+        }
+        if(!(ntohl(*(unsigned*)(info + 8)) == 2)){
+            puts("Failed2");
+            close(sockfd);
+            pthread_exit(0);
+        }
+        if(!(ntohl(*(unsigned*)(info + 14)) == 4)){
+            puts("Failed3");
+            close(sockfd);
+            pthread_exit(0);
+        }
+        memcpy(ptr,info+4,4);
+        ptr+=4;
+        memcpy(ptr,info+12,2);
+        ptr+=2;
+        memcpy(ptr,info+18,4);
+        memcpy(info,command_tmp,sizeof(command_tmp));
+
     }
     pthread_mutex_lock(&files_mutex);
     for(int i = 0; i < FILES_MAX; i++){

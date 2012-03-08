@@ -11,6 +11,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <ncurses.h>
+void error(const char *msg)
+{
+    perror(msg);
+    exit(1);
+}
 
 ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
     fd_set rfds;
@@ -93,7 +99,8 @@ void accept_thread (int portno) {
 int main(int argc, char * argv[]){
     struct sockaddr_in serv_addr;
     int sockfd;
-    char command[100];
+    char command[100], *ptr;
+    unsigned len;
     pthread_t thread_accept;
     short myPort = atoi(argv[3]);
     short serverPort = atoi(argv[2]);
@@ -117,13 +124,25 @@ int main(int argc, char * argv[]){
     
     command[0] = 0x1;
     command[1] = 3;
+    ptr = command+2;
+
     myPort = htons(myPort);
-    memcpy(command+2, &serv_addr.sin_addr, 4);
-    memcpy(command+2+4, &myPort, 2);
-    memcpy(command+2+4+2, &fileID, 4);
-    write(sockfd, command, 2+4+2+4);
-    read(sockfd, command, 2);
-    printf("msg = %x\n", command[0]);
+    len = htonl(4);
+    memcpy(ptr,&len,4); ptr+=4;
+    memcpy(ptr,&serv_addr.sin_addr,4);ptr+=4;
+
+    len = htonl(2);
+    memcpy(ptr,&len,4); ptr+=4;
+    memcpy(ptr,&myPort,2); ptr+=2;
+
+    len = htonl(4);
+    memcpy(ptr,&len,4); ptr+=4;
+    memcpy(ptr,&fileID,4); ptr+=4;
+
+    printf("sending len = %u\n",ptr - command);
+    write(sockfd,command,ptr - command);
+    read(sockfd,command,2);
+    printf("msg = %x\n",command[0]);
     close(sockfd);
     printf("End of main\n");
     while(1);

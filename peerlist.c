@@ -57,10 +57,11 @@ int main(int argc, char * argv[]){
     }
     struct sockaddr_in serv_addr;
     int sockfd;
+    unsigned argLen = 0;
     char command[100];
     pthread_t thread_accept;
     short serverPort = atoi(argv[2]);
-    int fileID = htonl(0x22345678);
+    int fileID = htonl(0x12345678);
 
     inet_aton(argv[1],&serv_addr.sin_addr);
     serv_addr.sin_port = htons(serverPort);
@@ -71,8 +72,11 @@ int main(int argc, char * argv[]){
     }
     command[0] = 0x4;
     command[1] = 1;
-    memcpy(command+2,&fileID,4);
-    write(sockfd,command,6);
+    argLen = htonl(4);
+    memcpy(command+2,&argLen,4);
+    memcpy(command+6,&fileID,4);
+
+    write(sockfd,command,10);
     read(sockfd,command,2);
     printf("msg = %x\n",command[0]);
     printf("len = %d\n",command[1]);
@@ -82,11 +86,11 @@ int main(int argc, char * argv[]){
     int len = command[1];
 
     for(int i = 0; i < len; i++){
-        if(RecvN(sockfd,command,6,0) != 6){
+        if(RecvN(sockfd,command,10,0) != 10){
             perror("!!!");
         }
-        memcpy(&addr.s_addr,command,4);
-        memcpy(&port,command+4,2);
+        memcpy(&addr.s_addr,command+4,4);
+        memcpy(&port,command+8,2);
         port = ntohs(port);
         char * ip =  inet_ntoa(addr);
         printf("ip = %s\t:%i\t\n",ip,port);
