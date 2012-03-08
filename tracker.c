@@ -68,25 +68,30 @@ void process_setup(int sockfd){
 #undef CommandLen
 #define CommandLen (4+2+4+12)
     char command[CommandLen];
+    int clientSockfd, portno, n;
+    struct sockaddr_in serv_addr;
+    char client_test[2] = {0x2, 0};
+    
+    puts("-- New client set-up --");
+
     if(RecvN(sockfd,command,CommandLen,0) != CommandLen){
         close(sockfd);
         pthread_exit(0);
-    }
-    else{
+    } else {
         char command_tmp[10], *ptr;
         ptr = command_tmp;
         if(!(ntohl(*(unsigned*)command) == 4)){
-            puts("Failed1");
+            puts("Wrong msg format. ");
             close(sockfd);
             pthread_exit(0);
         }
         if(!(ntohl(*(unsigned*)(command +  8)) == 2)){
-            puts("Failed2");
+            puts("Wrong msg format. ");
             close(sockfd);
             pthread_exit(0);
         }
         if(!(ntohl(*(unsigned*)(command +  14)) == 4)){
-            puts("Failed3");
+            puts("Wrong msg format. ");
             close(sockfd);
             pthread_exit(0);
         }
@@ -96,14 +101,7 @@ void process_setup(int sockfd){
         ptr+=2;
         memcpy(ptr,command+18,4);
         memcpy(command,command_tmp,sizeof(command_tmp));
-
     }
-
-    int clientSockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    char client_test[2] = {0x2, 0};
-
-    puts("-- New client set-up --");
 
     bzero((char *) &serv_addr, sizeof(serv_addr));
 
@@ -273,6 +271,7 @@ void accept_thread(int portno){
     clilen = sizeof(cli_addr);
     while(1) {
         pthread_t tmp;
+        puts("Waiting for client ...");
         newsockfd = accept(sockfd, 
                 (struct sockaddr *) &cli_addr, 
                 &clilen);

@@ -11,7 +11,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <ncurses.h>
 void error(const char *msg)
 {
     perror(msg);
