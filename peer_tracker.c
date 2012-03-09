@@ -1,79 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <arpa/inet.h>
-
-unsigned int fileID = 0x12345678;
-//struct in_addr tip;
-//unsigned short tport = 0;
-//unsigned int listen_port = 0;
-
-ssize_t RecvN(int sockfd, void *buf, size_t len) {
-    fd_set rfds;
-    struct timeval tv;
-    int retval;
-    int read_len = 0;
-    char *ptr = (char*) buf;
-
-    FD_ZERO(&rfds);
-    FD_SET(sockfd, &rfds);
-    
-    tv.tv_sec = 2;
-    tv.tv_usec = 0;
-
-    while (read_len < len) {
-        retval = select(1, &rfds, NULL, NULL, &tv);
-        if (retval < 0) {
-            perror("select()");
-        } else if (retval) {
-            int l;
-            l = read(sockfd, ptr, len - read_len);
-            if (l > 0) {
-                ptr += l;
-                read_len += l;
-            } else if (l <= 0) {
-                return read_len;
-            }
-        } else {
-            printf("RecvN() [%d] No data within 2 secs. \n", sockfd);
-            return 0;
-        }
-    }
-    printf("Reaching the end of RecvN() [%d] ... Something goes wrong ??\n", sockfd);
-    return read_len;
-}
-
-/*
-int init_connect(struct in_addr ip, const unsigned short port) {
-    int sockfd = -1;
-    struct sockaddr_in tgt;
-    char tgtip[16];
-
-
-    tgt.sin_addr = ip;
-    tgt.sin_port = htons(port);
-    tgt.sin_family = AF_INET;
-    
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    inet_ntop(AF_INET, &ip, tgtip, 16);
-
-    fprintf(stderr, "[i-c]\tTarget: %s : %d\n", tgtip, ntohs(port));
-
-    if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0) {
-        perror("init_connect() -> connect()");
-        close(sockfd);
-        return -1;
-    }
-
-    return sockfd;
-}
-*/
+#include "peer.h"
 
 int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     char msg[24];
@@ -84,7 +9,7 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     unsigned int argl, tmp;
     unsigned short port;
 
-    fprintf(stderr, "-- Peer register --\n");
+    fprintf(stderr, "== Peer register ==\n");
     fprintf(stderr, "\tConnection\n");
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -99,7 +24,6 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     tracker.sin_port = htons(tport);
    
     inet_ntop(AF_INET, &tip, localip, 16); 
-    printf("IP = %s : %d\n", localip, tport);
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("[REG] connect()");
         close(sockfd);
@@ -275,7 +199,6 @@ int tracker_list(struct in_addr tip, in_port_t tport) {
     write(sockfd, msg, 10);
 
     read(sockfd, msg, 2);
-//    RecvN(sockfd, msg, 2);
     if (msg[0] != 0x14) {
         puts("Wrong type response ... Check the tracker. ");
         close(sockfd);
@@ -301,7 +224,6 @@ int tracker_list(struct in_addr tip, in_port_t tport) {
         read(sockfd, ips + i, 4);
         read(sockfd, ports + i, 2);
        
-
         ports[i] = ntohs(ports[i]);
         inet_ntop(AF_INET, ips + i, ip, 16);
         printf("[%d] %s : %d\n", i, ip, ports[i]); 
@@ -323,108 +245,3 @@ void test_reply(int sockfd) {
 
     return;
 }
-
-void thread_response(int sockfd) {
-    fprintf(stderr, "-- Response to a connection --\n");
-    char msg[2];
-    
-    fprintf(stderr, "\tWaiting for message return\n");
-    if (!read(sockfd, msg, 2)) {
-        fprintf(stderr, "Could not receive enough length of command\n");   
-        pthread_exit(NULL);
-    }
-    
-    switch (msg[0]) {
-        case 0x02: 
-            if (!msg[1]) {
-                test_reply(sockfd);
-                close(sockfd);
-                break;
-            }
-        default: 
-            puts("Receiving a unknown command, ignoring it");
-            close(sockfd);
-    }
-    pthread_exit(0);
-    return;
-}
-
-void thread_accept(in_port_t lport) {
-    int sockfd, income_sockfd;
-    struct sockaddr_in local_addr, income_addr;
-    socklen_t income_addr_len;
-    int n = 0;
-    char tmp[10];
-    pthread_t threads[5];
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("[ACCEPT] socket()");
-        pthread_exit(0);
-    }
-
-    local_addr.sin_family = AF_INET;
-    local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    local_addr.sin_port = htons(lport);
-    if(bind(sockfd, (struct sockaddr *) &local_addr, sizeof(local_addr)) < 0) {
-        perror("[ACCEPT] bind()");
-        pthread_exit(0);
-    }
-
-    listen(sockfd, 5);
-
-    printf("Listening port opened: %d (sockfd = %d)\n", lport, sockfd);
-    while (1) {
-        income_addr_len = sizeof(income_addr);
-        
-        fprintf(stderr, "Accept ...\n");
-        income_sockfd = accept(sockfd, (struct sockaddr*) &income_addr, &income_addr_len);
-        fprintf(stderr, "Accepted. sockfd = %d\n", income_sockfd);
-        if (income_sockfd < 0) {
-            perror("[ACCEPT] accept()");
-            pthread_exit(0);
-        }
-
-        pthread_create(threads + n, NULL, (void * (*) (void *)) thread_response, income_sockfd);
-        ++n;
-    }
-    pthread_exit(0);
-    return;
-}
-
-int main(int argc, char **argv) {
-    int sockfd;
-    char *buf;
-    pthread_t accept;
-    struct in_addr tip;
-    in_port_t tport, listen_port;
-
-    if (argc != 4) {
-        printf("Usage: %s serverIP serverPort myPort\n", argv[0]);
-        exit(0);
-    }
-    
-    fprintf(stderr, "Tracker: %s : %d\n", argv[1], atoi(argv[2]));
- 
-    inet_aton(argv[1], &tip);
-    tport = atoi(argv[2]);
-    listen_port = atoi(argv[3]);
-
-    pthread_create(&accept, NULL, (void* (*) (void*)) thread_accept, (void*) listen_port);
-
-    tracker_reg(tip, tport, listen_port);
-
-    getchar();
-    
-    tracker_list(tip, tport);
-
-    getchar();
-
-    tracker_unreg(tip, tport, listen_port);
-    while (1);
-out: 
-    close(sockfd);
-
-    return 0;
-}
-

@@ -1,149 +1,160 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <signal.h>
-void error(const char *msg)
-{
-    perror(msg);
-    exit(1);
+#include "peer.h"
+
+void show_help() {
+    printf("The following commands are avalible: \n");
+    printf("\tadd [filename]    \tAdd a new download job\n");
+    printf("\tseed [filename]   \tAdd a new seed job\n");
+    printf("\tsubseed [filename]\tAdd a subseed job\n");
+    printf("\tstop              \tStop the current job\n");
+    printf("\tresume            \tResume a stopped job\n");
+    printf("\tprogress          \tShow the progress of current downloading job\n");
+    printf("\tpeer              \tPrint the IP address and port of peers of current downloading job\n");
+    printf("\thelp              \tShow this manual\n");
+    printf("\texit              \tExit\n");
+    return; 
 }
+
+static char commands[][9] = { "add", "seed", "subseed", 
+                        "stop", "resume", "progress", 
+                        "peer", "help", "exit"
+                      };
 
 ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
     fd_set rfds;
     struct timeval tv;
     int retval;
     int read_len = 0;
-    char *ptr = (char*)buf;
+    char *ptr = (char*) buf;
 
     FD_ZERO(&rfds);
     FD_SET(sockfd, &rfds);
-
+    
     tv.tv_sec = 2;
     tv.tv_usec = 0;
 
     while (read_len < len) {
         retval = select(1, &rfds, NULL, NULL, &tv);
-        if (retval == -1) {
+        if (retval < 0) {
             perror("select()");
-        } else if (retval) {
+            return read_len;
+        }
+        if (retval) {
             int l;
-            l = read(sockfd,ptr,len - read_len);
+            l = read(sockfd, ptr, len - read_len);
             if (l > 0) {
                 ptr += l;
-                read_len+=l;
-            } else if (l <= 0) {
+                read_len += l;
+            } else {
                 return read_len;
             }
         } else {
-            printf("No data within 2 seconds.\n");
-            return 0;
+            printf("RecvN() [%d] No data within 2 secs. \n", sockfd);
+            return read_len;
         }
     }
-
-    return 0;
+    printf("Reaching the end of RecvN() [%d] ... Something goes wrong ??\n", sockfd);
+    return read_len;
 }
 
-void accept_thread (int portno) {
-    int sockfd, newsockfd;
-    struct sockaddr_in serv_addr, cli_addr;
-    socklen_t clilen;
+int main(int argc, char **argv) {
+    char status[20];
+    int mode = 0;
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("accept_thread() -> socket()");
-    
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
-    
-    if (bind(sockfd, (struct sockaddr *) &serv_addr,
-                sizeof(serv_addr)) < 0) {
-        error("accept_thread() -> bind()");
-        exit(0);
-    }
-
-    listen(sockfd,5);
-    clilen = sizeof(cli_addr);
-    newsockfd = accept(sockfd, 
-            (struct sockaddr *) &cli_addr, 
-            &clilen);
-    if (newsockfd < 0){
-        error("accept_thread() -> accept()");
-    }
-    {
-        char msg[2];
-        read(newsockfd,&msg,2);
-        if(msg[0] != 0x2){
-            printf("MSG = %x\n",msg[0]);
-        }
-        msg[0] = 0x12;
-        write(newsockfd,&msg,2);
-        close(newsockfd);
-    }
-    printf("YES!!");
-    pthread_exit(0);
-    ///...
-}
-
-int main(int argc, char * argv[]){
-    struct sockaddr_in serv_addr;
-    int sockfd;
-    char command[100], *ptr;
-    unsigned len;
-    pthread_t thread_accept;
-    short myPort = atoi(argv[3]);
-    short serverPort = atoi(argv[2]);
-    int fileID = htonl(0x12345678);
-    
-    if (argc != 4) {
-        printf("Usage ./%s serverip serverPort myPort\n", argv[0]);
+    if (argc != 1) {
+        printf("Usage: %s\n", argv[0]);
         exit(0);
     }
     
-    pthread_create(&thread_accept, NULL, accept_thread, myPort);
-
-    inet_aton(argv[1], &serv_addr.sin_addr);
-    serv_addr.sin_port = htons(serverPort);
-    serv_addr.sin_family = AF_INET;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    printf(" == BT Peer client == \n");
+    show_help();
+    strcpy(status, "Idle");
     
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-       perror("main() -> connect()");
+    while (1) {
+        char *cmd[2], input[127];
+        int ipt = 0, i = 0;
+        printf("[%s] >> ", status);
+        fflush(stdout);
+
+        i = read(fileno(stdin), input, 126);
+
+        if (i <= 0) {
+            printf("\n");
+            goto out;
+        }
+
+        if (cmd[0] = strstr(input, "\n"))
+            cmd[0][0] = '\0';
+
+        cmd[0] = strtok(input, " ");
+        printf("Input argument 1: %s\n", cmd[0]);
+        cmd[1] = strtok(NULL, " ");
+        printf("Input argument 2: %s\n", cmd[1]);
+         
+        if (!cmd[0]) {
+            printf("Please enter an valid command. \n");
+            continue;
+        }
+        
+        i = 0;
+
+        while (!ipt) {
+            if (i > 9) break;
+            printf("%s vs %s\n", cmd[0], commands[i]);
+            if (!strcmp(cmd[0], commands[i])) {
+                ipt = i + 1;
+                break;
+            }
+            ++i;
+        }
+
+        if (!ipt) {
+            printf("Please enter an valid command. \n");
+            continue;
+        }
+
+        if ((ipt > 3) && (cmd[1])) {
+            printf("This command do not require further argument. \n");
+            continue;
+        } else if ((ipt <= 3) && (!cmd[1])) {
+            printf("This command require .torrent file name as argument. \n");
+            continue;
+        }
+        
+        switch (ipt) {
+            case 1: 
+                printf("Add ... \n");
+                break;
+            case 2:
+                printf("Seed ... \n");
+                break;
+            case 3:
+                printf("Subseed ... \n");
+                break;
+            case 4:
+                printf("Stop ... \n");
+                break;
+            case 5:
+                printf("Resume ... \n");
+                break;
+            case 6:
+                printf("Progress ... \n");
+                break;
+            case 7: 
+                printf("Peer ... \n");
+                break;
+            case 8: 
+                printf("Help ... \n");
+                show_help();
+                break;
+            case 9: 
+                printf("Exit ... \n");
+                goto out;
+            default: 
+                printf("Something goes wrong ... \n");
+        }
     }
-    
-    command[0] = 0x1;
-    command[1] = 3;
-    ptr = command+2;
 
-    myPort = htons(myPort);
-    len = htonl(4);
-    memcpy(ptr,&len,4); ptr+=4;
-    memcpy(ptr,&serv_addr.sin_addr,4);ptr+=4;
-
-    len = htonl(2);
-    memcpy(ptr,&len,4); ptr+=4;
-    memcpy(ptr,&myPort,2); ptr+=2;
-
-    len = htonl(4);
-    memcpy(ptr,&len,4); ptr+=4;
-    memcpy(ptr,&fileID,4); ptr+=4;
-
-    printf("sending len = %u\n",ptr - command);
-    write(sockfd,command,ptr - command);
-    read(sockfd,command,2);
-    printf("msg = %x\n",command[0]);
-    close(sockfd);
-    printf("End of main\n");
-    while(1);
+out:
+    printf("Bye. \n");
     return 0;
 }

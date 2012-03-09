@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <endian.h>
-#include <stdint.h>
+#include "peer.h"
 
 int torrent_file(char *filename) {
     int fd;
@@ -40,7 +36,7 @@ int torrent_file(char *filename) {
     printf("File size: %u\n", size);
     return 0;
 }
-
+/*
 int main(int argc, char **argv) {
     if (argc > 1)
         return torrent_file(argv[1]);
@@ -48,3 +44,4 @@ int main(int argc, char **argv) {
     printf("Usage: %s filename\n", argv[0]);
     return -1;
 }
+*/
