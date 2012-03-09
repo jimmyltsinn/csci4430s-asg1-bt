@@ -8,15 +8,10 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 
-union {
-    int whole;
-    char sub[4];
-} ip;
-
-unsigned int fileID = 0;
-struct in_addr tip;
-unsigned short tport = 0;
-unsigned int listen_port = 0;
+unsigned int fileID = 0x12345678;
+//struct in_addr tip;
+//unsigned short tport = 0;
+//unsigned int listen_port = 0;
 
 ssize_t RecvN(int sockfd, void *buf, size_t len) {
     fd_set rfds;
@@ -35,26 +30,25 @@ ssize_t RecvN(int sockfd, void *buf, size_t len) {
         retval = select(1, &rfds, NULL, NULL, &tv);
         if (retval < 0) {
             perror("select()");
-            return read_len;
-        }
-        if (retval) {
+        } else if (retval) {
             int l;
             l = read(sockfd, ptr, len - read_len);
             if (l > 0) {
                 ptr += l;
                 read_len += l;
-            } else {
+            } else if (l <= 0) {
                 return read_len;
             }
         } else {
             printf("RecvN() [%d] No data within 2 secs. \n", sockfd);
-            return read_len;
+            return 0;
         }
     }
     printf("Reaching the end of RecvN() [%d] ... Something goes wrong ??\n", sockfd);
     return read_len;
 }
 
+/*
 int init_connect(struct in_addr ip, const unsigned short port) {
     int sockfd = -1;
     struct sockaddr_in tgt;
@@ -79,59 +73,66 @@ int init_connect(struct in_addr ip, const unsigned short port) {
 
     return sockfd;
 }
+*/
 
-int tracker_reg() {
+int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     char msg[24];
-    struct sockaddr_in tmp;
-    int tmplen = sizeof(tmp);
+    struct sockaddr_in tracker;
+    int tmplen = sizeof(tracker);
     char localip[16];
-    unsigned short port;
     int sockfd;
-    unsigned int argl; 
+    unsigned int argl, tmp;
+    unsigned short port;
 
     fprintf(stderr, "-- Peer register --\n");
     fprintf(stderr, "\tConnection\n");
 
-    sockfd = init_connect(tip, tport);
-
-    if (sockfd < 0)
-        return -1;
-
-    if (getsockname(sockfd, (struct sockaddr*)&tmp, &tmplen)) {
-        perror("getsockname()");
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("[REG] socket()");
         return -1;
     }
     
-    if(!inet_ntop(AF_INET, &tmp.sin_addr, localip, 16)) {
-        perror("inet_ntop()");
-        return -1;
-    }
+    memset(&tracker, sizeof(tracker), 0);
+    tracker.sin_family = AF_INET;
+    tracker.sin_addr = tip;
+    tracker.sin_port = htons(tport);
    
-    fprintf(stderr, "Debug\tSelf IP: %s : %d\n", localip, ntohs(tmp.sin_port));
-    
+    inet_ntop(AF_INET, &tip, localip, 16); 
+    printf("IP = %s : %d\n", localip, tport);
+    if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
+        perror("[REG] connect()");
+        close(sockfd);
+        return -1;
+    }
+
     fprintf(stderr, "\tCompose the message\n");
     msg[0] = 0x01;
     msg[1] = 3;
 
     argl = htonl(4);
     memcpy(msg + 2, &argl, 4);
-    memcpy(msg + 2 + 4, &tmp.sin_addr, 4);
+    memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
     
     argl = htonl(2);
-    port = htons(tmp.sin_port);
+    port = htons(listen_port);
     memcpy(msg + 2 + 4 + 4, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4, &port, 2);
     
     argl = htonl(4);
-    fileID = htons(fileID);
+    tmp = htonl(fileID);
     memcpy(msg + 2 + 4 + 4 + 4 + 2, &argl, 4);
-    memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &fileID, 4);
-    
+    memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &tmp, 4);
+
     fprintf(stderr, "\tSent the message\n");
     write(sockfd, msg, 24);
     
     fprintf(stderr, "\tReceive the return\n");
-    RecvN(sockfd, msg, 2);
+    if (read(sockfd, msg, 2) != 2) {
+        puts("No response ...");
+        close(sockfd);
+        return -1;
+    }
     if (msg[1]) {
         puts("Wrong type response ... Check the tracker. b");
         close(sockfd);
@@ -155,99 +156,155 @@ int tracker_reg() {
     return -1;
 }
 
-int tracker_unreg() {
+int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     char msg[24];
-    struct sockaddr_in tmp;
-    int tmplen = sizeof(tmp);
+    struct sockaddr_in tracker;
+    int tmplen = sizeof(tracker);
     char localip[16];
-    unsigned short port;
     int sockfd;
-    unsigned int argl;
+    unsigned int argl, tmp;
+    unsigned short port;
 
-    printf("-- Peer unregister --\n");
+    fprintf(stderr, "-- Peer unregister --\n");
+    fprintf(stderr, "\tConnection\n");
 
-    sockfd = init_connect(tip, tport);
-
-    if (sockfd < 0)
-        return -1;
-    
-    if (getsockname(sockfd, (struct sockaddr*)&tmp, &tmplen)) {
-        perror("getsockname()");
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("[UNREG] socket()");
         return -1;
     }
     
-    if(!inet_ntop(AF_INET, &tmp.sin_addr, localip, 16)) {
-        perror("inet_ntop()");
+    memset(&tracker, sizeof(tracker), 0);
+    tracker.sin_family = AF_INET;
+    tracker.sin_addr = tip;
+    tracker.sin_port = htons(tport);
+   
+    inet_ntop(AF_INET, &tip, localip, 16); 
+    printf("IP = %s : %d\n", localip, tport);
+    if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
+        perror("[UNREG] connect()");
+        close(sockfd);
         return -1;
     }
-    
-    msg[0] = 0x01;
+
+    fprintf(stderr, "\tCompose the message\n");
+    msg[0] = 0x03;
     msg[1] = 3;
 
     argl = htonl(4);
     memcpy(msg + 2, &argl, 4);
-    memcpy(msg + 2 + 4, &tmp.sin_addr, 4);
+    memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
     
     argl = htonl(2);
-    port = htons(tmp.sin_port);
+    port = htons(listen_port);
     memcpy(msg + 2 + 4 + 4, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4, &port, 2);
     
     argl = htonl(4);
-    fileID = htons(fileID);
+    tmp = htonl(fileID);
     memcpy(msg + 2 + 4 + 4 + 4 + 2, &argl, 4);
-    memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &fileID, 4);
-    
+    memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &tmp, 4);
+
+    fprintf(stderr, "\tSent the message\n");
     write(sockfd, msg, 24);
-   
-    RecvN(sockfd, msg, 2);
-    if (msg[0] != 0x13 || msg[1]) {
-        puts("Wrong type response ... Check the tracker. ");
+    
+    fprintf(stderr, "\tReceive the return\n");
+    if (read(sockfd, msg, 2) != 2) {
+        puts("No response ...");
+        close(sockfd);
         return -1;
     }
-    
-    puts("Peer has successfully unregistered from tracker. ");
-    return 0;
+    if (msg[1]) {
+        puts("Wrong type response ... Check the tracker. b");
+        close(sockfd);
+        return -1;
+    }
+
+    switch (msg[0]) {
+        case 0x13: 
+            puts("Peer has unregistered from tracker. ");
+            close(sockfd);
+            return 0;
+        case 0x23: 
+            puts("Peer could not be unregistered from tracker. ");
+            break;
+        default: 
+            puts("Wrong type response ... Check the tracker. c");
+    }
+
+    fprintf(stderr, "\tClose the socket\n");
+    close(sockfd);
+    return -1;
 }
 
-int tracker_list() {
-    char msg[6];
+int tracker_list(struct in_addr tip, in_port_t tport) {
+    char msg[10];
     int i, sockfd, n;
+    struct sockaddr_in tracker;
+    char localip[16];
+    unsigned int tmp;
     unsigned int *ips;
     unsigned short *ports;
 
     puts("-- Tracker List Request --");
-    sockfd = init_connect(tip, tport);
-
-    if (sockfd < 0)
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("[LIST] socket()");
         return -1;
+    }
+    
+    memset(&tracker, sizeof(tracker), 0);
+    tracker.sin_family = AF_INET;
+    tracker.sin_addr = tip;
+    tracker.sin_port = htons(tport);
+   
+    inet_ntop(AF_INET, &tip, localip, 16); 
+    printf("IP = %s : %d\n", localip, tport);
+    if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
+        perror("[LIST] connect()");
+        close(sockfd);
+        return -1;
+    }
 
-    fileID = htonl(fileID);
     msg[0] = 0x04;
     msg[1] = 1;
-    memcpy(msg + 2, &fileID, 4);
-    write(sockfd, msg, 6);
+    tmp = htonl(4);
+    memcpy(msg + 2, &tmp, 4);
+    tmp = htonl(fileID);
+    memcpy(msg + 2 + 4, &tmp, 4);
+    write(sockfd, msg, 10);
 
-    RecvN(sockfd, msg, 2);
+    read(sockfd, msg, 2);
+//    RecvN(sockfd, msg, 2);
     if (msg[0] != 0x14) {
         puts("Wrong type response ... Check the tracker. ");
         close(sockfd);
         return -1;
     }
     n = msg[1];
+    printf("Number of registered peer = %d\n", n);
 
     ips = malloc(sizeof(unsigned int) * n);
     ports = malloc(sizeof(unsigned short) * n);
 
     for (i = 0; i < n; ++i) {
-        char tmp[4];
+        unsigned int tmp;
+        char ip[16];
 
+        read(sockfd, &tmp, 4);
+        tmp = ntohl(tmp);
+        if (tmp != 6) {
+            printf("tmp = %x\n", tmp);
+            puts("Wrong format in message length ... ");
+            return -1;
+        }
         read(sockfd, ips + i, 4);
         read(sockfd, ports + i, 2);
-        
-        *tmp = ntohl(ips[i]);
+       
 
-        printf("[%d] %d.%d.%d.%d : %d\n", i, tmp[0], tmp[1], tmp[2], tmp[3], ntohs(ports[i]));
+        ports[i] = ntohs(ports[i]);
+        inet_ntop(AF_INET, ips + i, ip, 16);
+        printf("[%d] %s : %d\n", i, ip, ports[i]); 
     }
 
     close(sockfd);
@@ -258,6 +315,7 @@ int tracker_list() {
 void test_reply(int sockfd) {
     char msg[2];
     
+    fprintf(stderr, "Reply test message to tracker\n"); 
     msg[0] = 0x12;
     msg[1] = 0;
 
@@ -271,12 +329,16 @@ void thread_response(int sockfd) {
     char msg[2];
     
     fprintf(stderr, "\tWaiting for message return\n");
-    RecvN(sockfd, msg, 2);
+    if (!read(sockfd, msg, 2)) {
+        fprintf(stderr, "Could not receive enough length of command\n");   
+        pthread_exit(NULL);
+    }
     
     switch (msg[0]) {
         case 0x02: 
             if (!msg[1]) {
                 test_reply(sockfd);
+                close(sockfd);
                 break;
             }
         default: 
@@ -287,11 +349,12 @@ void thread_response(int sockfd) {
     return;
 }
 
-void thread_accept(int lport) {
+void thread_accept(in_port_t lport) {
     int sockfd, income_sockfd;
     struct sockaddr_in local_addr, income_addr;
     socklen_t income_addr_len;
     int n = 0;
+    char tmp[10];
     pthread_t threads[5];
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -302,7 +365,7 @@ void thread_accept(int lport) {
 
     local_addr.sin_family = AF_INET;
     local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    local_addr.sin_port = lport;
+    local_addr.sin_port = htons(lport);
     if(bind(sockfd, (struct sockaddr *) &local_addr, sizeof(local_addr)) < 0) {
         perror("[ACCEPT] bind()");
         pthread_exit(0);
@@ -310,19 +373,21 @@ void thread_accept(int lport) {
 
     listen(sockfd, 5);
 
-    income_addr_len = sizeof(income_addr);
-    
-    fprintf(stderr, "Accept ...\n");
-    income_sockfd = accept(sockfd, (struct sockaddr*) &income_addr, &income_addr_len);
-    fprintf(stderr, "Accepted. \n");
-    if (income_sockfd < 0) {
-        perror("[ACCEPT] accept()");
-        pthread_exit(0);
+    printf("Listening port opened: %d (sockfd = %d)\n", lport, sockfd);
+    while (1) {
+        income_addr_len = sizeof(income_addr);
+        
+        fprintf(stderr, "Accept ...\n");
+        income_sockfd = accept(sockfd, (struct sockaddr*) &income_addr, &income_addr_len);
+        fprintf(stderr, "Accepted. sockfd = %d\n", income_sockfd);
+        if (income_sockfd < 0) {
+            perror("[ACCEPT] accept()");
+            pthread_exit(0);
+        }
+
+        pthread_create(threads + n, NULL, (void * (*) (void *)) thread_response, income_sockfd);
+        ++n;
     }
-
-    pthread_create(threads + n, NULL, (void * (*) (void *)) thread_response, &income_sockfd);
-    ++n;
-
     pthread_exit(0);
     return;
 }
@@ -331,6 +396,8 @@ int main(int argc, char **argv) {
     int sockfd;
     char *buf;
     pthread_t accept;
+    struct in_addr tip;
+    in_port_t tport, listen_port;
 
     if (argc != 4) {
         printf("Usage: %s serverIP serverPort myPort\n", argv[0]);
@@ -340,15 +407,24 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Tracker: %s : %d\n", argv[1], atoi(argv[2]));
  
     inet_aton(argv[1], &tip);
-    tport = htons(atoi(argv[2]));
-    listen_port = htons(atoi(argv[3]));
+    tport = atoi(argv[2]);
+    listen_port = atoi(argv[3]);
 
-    pthread_create(&accept, NULL, thread_accept, listen_port);
+    pthread_create(&accept, NULL, (void* (*) (void*)) thread_accept, (void*) listen_port);
 
-    tracker_reg();
+    tracker_reg(tip, tport, listen_port);
+
+    getchar();
+    
+    tracker_list(tip, tport);
+
+    getchar();
+
+    tracker_unreg(tip, tport, listen_port);
     while (1);
 out: 
     close(sockfd);
 
     return 0;
 }
+

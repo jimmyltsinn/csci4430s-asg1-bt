@@ -75,6 +75,7 @@ void process_setup(int sockfd){
     puts("-- New client set-up --");
 
     if(RecvN(sockfd,command,CommandLen,0) != CommandLen){
+        puts("Command Length wrong ... ");
         close(sockfd);
         pthread_exit(0);
     } else {
@@ -112,9 +113,15 @@ void process_setup(int sockfd){
 
     puts("-- Connect to client --");
     if (connect(clientSockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+        char ip[16];
+        unsigned short port;
+        inet_ntop(AF_INET, &serv_addr.sin_addr, ip, 16);
+        port = serv_addr.sin_port;
+        printf("IP = %s : %d", ip, ntohs(port));
+        perror("connect()");
         client_fail(sockfd);
     }
-    
+//    getchar(); 
     puts("-- Reply to client with 0x02 --");
     write(clientSockfd, client_test, 2);
     
@@ -161,12 +168,18 @@ void process_downloadlist(int sockfd){
     char msgBuf[255*10+100];
     char * ptr = msgBuf + 2;
     unsigned char count = 0;
-    unsigned len = htonl(4);
-    if(RecvN(sockfd, fileID, 4, 0) != 4){
+    unsigned len = htonl(6);
+
+    puts("-- Handle downloadlist --");
+
+    if(RecvN(sockfd,fileID,8,0) != 8){
+        puts("Cannot get enough length ... ");
         client_fail(sockfd);
     }
 
+    puts("Getting lock .. ");
     pthread_mutex_lock(&files_mutex);
+    puts("Got it! ");
     for(int i = 0; i < FILES_MAX; i++){
         if(memcmp(files[i] + 6,fileID+4,4) == 0){
             memcpy(ptr,&len,4);
@@ -180,13 +193,14 @@ void process_downloadlist(int sockfd){
     msgBuf[1] = count;
 
     pthread_mutex_unlock(&files_mutex);
+    fprintf(stderr, "Sending message ... size = %d (item = %d)\n", count * 10 + 2, count);
     write(sockfd,msgBuf,count * 10 + 2);
     close(sockfd);
 }
 
 void process_unreg(int sockfd){
     char info[22];
-    if(RecvN(sockfd,&info,10,0) != 10){
+    if(RecvN(sockfd,&info,22,0) != 22){
         client_fail(sockfd);
     }
     else{
