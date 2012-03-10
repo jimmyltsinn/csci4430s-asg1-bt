@@ -1,6 +1,6 @@
 #include "peer.h"
 
-int init_job(char *torrentname) {
+int read_torrent(char *torrentname) {
     int fd;
 
     unsigned int tmpl;
@@ -17,7 +17,8 @@ int init_job(char *torrentname) {
     read(fd, &tmpl, 4);
     fileid = tmpl;
 
-    tracker_ip.s_addr = htonl(le32toh(tmpl));
+    read(fd, &tmpl, 4);
+    tracker_ip.s_addr = le32toh(tmpl);//htonl(le32toh(tmpl));
 
     read(fd, &tmps, 2);
     tracker_port = htons(le16toh(tmps));
@@ -39,8 +40,8 @@ int init_job(char *torrentname) {
         return -1;
     }
 
-    nchunk = (filesize >> 18);
-    filebitmap = malloc(sizeof(char) * (nchunk + 8) >> 3);
+    nchunk = ((filesize + (1 << CHUNK_SIZE)) >> CHUNK_SIZE);
+    filebitmap = malloc(sizeof(char) * (nchunk >> 3));
     switch (mode) {
         case 1: /* Download */
             memset(filebitmap, 0, (nchunk + 8) >> 3);
@@ -56,11 +57,12 @@ int init_job(char *torrentname) {
 
     return 0;
 }
-
+/*
 void bit_set(char *s, int pos) {
     s[pos >> 3] |= 1 << (pos & 7);
     return;
 }
+*/
 
 void subseed_init(char *torrent) {
     printf("\tThere are %d chunks in %s\n", nchunk, torrent);

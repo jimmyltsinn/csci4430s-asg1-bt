@@ -98,7 +98,7 @@ void info() {
     printf("\n");
 
     printf("File ID: 0x%x\n", fileid);
-    printf("File name: %s", filename ? filename : "(Unknown)");
+    printf("File name: %s\n", filename ? filename : "(Unknown)");
     printf("File size: %d\n", filesize);
     printf("Number of chunk: %d\n", nchunk);
 
@@ -146,9 +146,9 @@ int main(int argc, char **argv) {
             cmd[0][0] = '\0';
 
         cmd[0] = strtok(input, " ");
-        printf("Input argument 1: %s\n", cmd[0]);
+//        printf("Input argument 1: %s\n", cmd[0]);
         cmd[1] = strtok(NULL, " ");
-        printf("Input argument 2: %s\n", cmd[1]);
+//        printf("Input argument 2: %s\n", cmd[1]);
          
         if (!cmd[0]) {
             printf("Please enter an valid command. \n");
@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 
         while (!ipt) {
             if (i > 9) break;
-            printf("%s vs %s\n", cmd[0], commands[i]);
+//            printf("%s vs %s\n", cmd[0], commands[i]);
             if (!strcmp(cmd[0], commands[i])) {
                 ipt = i + 1;
                 break;
@@ -185,19 +185,19 @@ int main(int argc, char **argv) {
                 printf("Add ... \n");
                 mode = 1;
                 strcpy(status, "Download");
-                init_job(cmd[1]);
+                read_torrent(cmd[1]);
                 break;
             case 2:
                 printf("Seed ... \n");
                 mode = 2;
                 strcpy(status, "Seed");
-                init_job(cmd[1]);
+                read_torrent(cmd[1]);
                 break;
             case 3:
                 printf("Subseed ... \n");
                 mode = 3;
                 strcpy(status, "Subseed");
-                init_job(cmd[1]);
+                read_torrent(cmd[1]);
                 break;
             case 4:
                 printf("Stop ... \n");

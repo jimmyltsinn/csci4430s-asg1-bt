@@ -12,6 +12,9 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 
+#define CHUNK_SIZE 18
+
+#define bit_set(s, pos) s[pos >> 3] |= 1 << (pos & 7)
 /* Global variable */
 unsigned int fileid;
 unsigned int filesize;
@@ -26,8 +29,7 @@ struct in_addr tracker_ip, local_ip;
 unsigned short tracker_port, local_port; 
 
 /* peer_basic.c */
-int init_job(char *filename);
-void bit_set(char *s, int pos);
+int read_torrent(char *torrentname);
 void subseed_init(char *torrent);
 
 /* peer_file.c */

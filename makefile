@@ -9,9 +9,12 @@ peer_file: peer_file.c peer.h
 peer_tracker: peer_tracker.c peer.h
 	gcc peer_tracker.c -c -g -o peer_tracker.o
 
-peer: peer_tracker.o peer_file.o peer_basic.o peer.c peer.h
+peer_peer: peer_peer.c peer.h
+	gcc peer_peer.c -c -g -o peer_peer.o
+
+peer: peer_tracker.o peer_basic.o peer_peer.o peer.c peer.h
 	gcc peer.c -c -g -lpthread -o peer.o
-	gcc peer_tracker.o peer_file.o peer.o peer_basic.o -o peer
+	gcc peer_tracker.o peer.o peer_basic.o peer_peer.o -o peer
 
 tracker: tracker.c
 	gcc tracker.c -g -o tracker -lpthread -std=gnu99
