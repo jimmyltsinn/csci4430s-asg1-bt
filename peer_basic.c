@@ -1,60 +1,55 @@
 #include "peer.h"
 
-int init_job(char *filename) {
+int init_job(char *torrentname) {
     int fd;
-    unsigned int ip, id, lfn, size; 
-    unsigned short port;
-   
-    char *fn;
+
+    unsigned int tmpl;
+    unsigned short tmps;
 
     fprintf(stderr, "== Add ==\n");
 
-    fd = open(filename, O_RDONLY);
+    fd = open(torrentname, O_RDONLY);
     if (fd < 0) {
-        perror("Open file error");
+        perror("Open torrent file");
         return -1;
     }
-
-    read(fd, &id, 4);
     
-    read(fd, &ip, 4);
-    ip = le32toh(ip);
+    read(fd, &tmpl, 4);
+    fileid = tmpl;
 
-    read(fd, &port, 2);
-    port = le16toh(port);
+    tracker_ip.s_addr = htonl(le32toh(tmpl));
 
-    read(fd, &lfn, 4);
-    lfn = le32toh(lfn);
-
-    fn = malloc(sizeof(char) * (lfn + 1));
-    read(fd, fn, lfn);
-    fn[lfn] = '\0';
-
-    read(fd, &size, 4);
-    size = le32toh(size);
+    read(fd, &tmps, 2);
+    tracker_port = htons(le16toh(tmps));
     
+    read(fd, &tmpl, 4);
+    tmpl = le32toh(tmpl);
+    filename = malloc(tmpl + 1);
+    read(fd, filename, tmpl);
+    filename[tmpl] = '\0';
+    
+    read(fd, &tmpl, 4);
+    filesize = le32toh(tmpl);
+
     close(fd);
-    
-    fileID = id;
-    fileSize = size;
-    
-    filefd = open(fn, O_RDWR | O_CREAT);
+
+    filefd = open(filename, O_RDWR | O_CREAT);
     if (filefd < 0) {
         perror("Open target file");
         return -1;
     }
 
-    nChunk = (size >> 18);
-    fileBitmap = malloc(sizeof(char) * (nChunk + 8) >> 3);
+    nchunk = (filesize >> 18);
+    filebitmap = malloc(sizeof(char) * (nchunk + 8) >> 3);
     switch (mode) {
         case 1: /* Download */
-            memset(fileBitmap, 0, (nChunk + 8) >> 3);
+            memset(filebitmap, 0, (nchunk + 8) >> 3);
             break;
         case 2: /* Normal Seed */
-            memset(fileBitmap, 0xFF, (nChunk + 8) >> 3);
+            memset(filebitmap, 0xFF, (nchunk + 8) >> 3);
             break;
         case 3: /* Subseed */
-            subseed_init(filename);
+            subseed_init(torrentname);
             break;
     }
 
@@ -68,7 +63,7 @@ void bit_set(char *s, int pos) {
 }
 
 void subseed_init(char *torrent) {
-    printf("\tThere are %d chunks in %s\n", nChunk, torrent);
+    printf("\tThere are %d chunks in %s\n", nchunk, torrent);
     printf("\tWhich chunks to upload? (start counting from 0)\n");
 
     do {
@@ -83,13 +78,13 @@ void subseed_init(char *torrent) {
         ptr = tmp;
         range[0] = atoi(strtok_r(tmp, "-", &ptr));
         range[1] = atoi(ptr);
-        if (range[0] > range[1] || range[0] > (nChunk - 1) || range[1] > (nChunk - 1)) {
+        if (range[0] > range[1] || range[0] > (nchunk - 1) || range[1] > (nchunk - 1)) {
             puts("\tInvalid range");
             continue;
         }
         fprintf(stderr, "%d to %d\n", range[0], range[1]);
         for (i = range[0]; i <= range[1]; ++i) {
-            bit_set(fileBitmap, i);
+            bit_set(filebitmap, i);
         }
     } while (1);
 }

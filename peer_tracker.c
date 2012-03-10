@@ -1,6 +1,6 @@
 #include "peer.h"
 
-int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
+int tracker_reg() {
     char msg[24];
     struct sockaddr_in tracker;
     int tmplen = sizeof(tracker);
@@ -20,10 +20,9 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     
     memset(&tracker, sizeof(tracker), 0);
     tracker.sin_family = AF_INET;
-    tracker.sin_addr = tip;
-    tracker.sin_port = htons(tport);
+    tracker.sin_addr = tracker_ip;
+    tracker.sin_port = tracker_port;
    
-    inet_ntop(AF_INET, &tip, localip, 16); 
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("[REG] connect()");
         close(sockfd);
@@ -36,15 +35,15 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
 
     argl = htonl(4);
     memcpy(msg + 2, &argl, 4);
-    memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
+    memcpy(msg + 2 + 4, &local_ip, 4);
     
     argl = htonl(2);
-    port = htons(listen_port);
+    port = htons(local_port);
     memcpy(msg + 2 + 4 + 4, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4, &port, 2);
     
     argl = htonl(4);
-    tmp = htonl(fileID);
+    tmp = htonl(fileid);
     memcpy(msg + 2 + 4 + 4 + 4 + 2, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &tmp, 4);
 
@@ -80,7 +79,7 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     return -1;
 }
 
-int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
+int tracker_unreg() {
     char msg[24];
     struct sockaddr_in tracker;
     int tmplen = sizeof(tracker);
@@ -100,11 +99,11 @@ int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     
     memset(&tracker, sizeof(tracker), 0);
     tracker.sin_family = AF_INET;
-    tracker.sin_addr = tip;
-    tracker.sin_port = htons(tport);
+    tracker.sin_addr = tracker_ip;
+    tracker.sin_port = htons(tracker_port);
    
-    inet_ntop(AF_INET, &tip, localip, 16); 
-    printf("IP = %s : %d\n", localip, tport);
+    inet_ntop(AF_INET, &tracker_ip, localip, 16); 
+    printf("IP = %s : %d\n", localip, tracker_port);
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("[UNREG] connect()");
         close(sockfd);
@@ -120,12 +119,12 @@ int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
     
     argl = htonl(2);
-    port = htons(listen_port);
+    port = htons(local_port);
     memcpy(msg + 2 + 4 + 4, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4, &port, 2);
     
     argl = htonl(4);
-    tmp = htonl(fileID);
+    tmp = htonl(fileid);
     memcpy(msg + 2 + 4 + 4 + 4 + 2, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &tmp, 4);
 
@@ -161,7 +160,7 @@ int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     return -1;
 }
 
-int tracker_list(struct in_addr tip, in_port_t tport) {
+int tracker_list() {
     char msg[10];
     int i, sockfd, n;
     struct sockaddr_in tracker;
@@ -179,11 +178,11 @@ int tracker_list(struct in_addr tip, in_port_t tport) {
     
     memset(&tracker, sizeof(tracker), 0);
     tracker.sin_family = AF_INET;
-    tracker.sin_addr = tip;
-    tracker.sin_port = htons(tport);
+    tracker.sin_addr = tracker_ip;
+    tracker.sin_port = htons(tracker_port);
    
-    inet_ntop(AF_INET, &tip, localip, 16); 
-    printf("IP = %s : %d\n", localip, tport);
+    inet_ntop(AF_INET, &tracker_ip, localip, 16); 
+    printf("IP = %s : %d\n", localip, tracker_port);
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("[LIST] connect()");
         close(sockfd);
@@ -194,7 +193,7 @@ int tracker_list(struct in_addr tip, in_port_t tport) {
     msg[1] = 1;
     tmp = htonl(4);
     memcpy(msg + 2, &tmp, 4);
-    tmp = htonl(fileID);
+    tmp = htonl(fileid);
     memcpy(msg + 2 + 4, &tmp, 4);
     write(sockfd, msg, 10);
 

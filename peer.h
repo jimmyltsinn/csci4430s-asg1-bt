@@ -13,12 +13,17 @@
 #include <arpa/inet.h>
 
 /* Global variable */
-unsigned int fileID;
-unsigned int fileSize;
-unsigned int nChunk;
-char *fileBitmap;
+unsigned int fileid;
+unsigned int filesize;
+char *filename;
+unsigned int nchunk;
+char *filebitmap;
 int filefd;
 int mode;
+
+/* The IPs and ports are in network byte ordering */
+struct in_addr tracker_ip, local_ip;
+unsigned short tracker_port, local_port; 
 
 /* peer_basic.c */
 int init_job(char *filename);
@@ -26,12 +31,12 @@ void bit_set(char *s, int pos);
 void subseed_init(char *torrent);
 
 /* peer_file.c */
-int torrent_file(char *filename);
+int read_torrent(char *torrentname);
 
 /* peer_tracker.c */
-int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port);
-int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port);
-int tracker_list(struct in_addr tip, in_port_t tport);
+int tracker_reg();
+int tracker_unreg();
+int tracker_list();
 void test_reply(int sockfd);
 
 /* peer.c */

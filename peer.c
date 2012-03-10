@@ -58,26 +58,74 @@ ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
 */
 
 int init() {
-    fileID = 0;
-    fileSize = 0;
-    nChunk = 0;
+    fileid = 0;
+    filesize = 0;
+    nchunk = 0;
     mode = 0;
-    fileBitmap = NULL;
+    filebitmap = NULL;
     filefd = 0;
+
+    tracker_ip.s_addr = 0;
+    tracker_port = 0;
+    local_ip.s_addr = 0;
+    local_port = 0;
+
+    filename = NULL;
 
     return 0;
 }
 
+void getlocalsetting() {
+    char input[18];
+
+    printf("Please input your IP address: ");
+    fgets(input, 18, stdin);
+    fflush(stdin);
+    inet_aton(input, &local_ip);
+
+    printf("Please input the listening port: ");
+    fgets(input, 18, stdin);
+    fflush(stdin);
+    local_port = htons(atoi(input));
+
+    return;
+}
+
+void info() {
+    printf("Local IP: %s:%d\n", inet_ntoa(local_ip), ntohs(local_port));
+    printf("Tracker IP: %s:%d\n", inet_ntoa(tracker_ip), ntohs(tracker_port));
+
+    printf("\n");
+
+    printf("File ID: 0x%x\n", fileid);
+    printf("File name: %s", filename ? filename : "(Unknown)");
+    printf("File size: %d\n", filesize);
+    printf("Number of chunk: %d\n", nchunk);
+
+    return;
+}
+
 int main(int argc, char **argv) {
     char status[20];
+    char ip[16];
 
-    if (argc != 1) {
-        printf("Usage: %s\n", argv[0]);
+    if (argc != 1 && argc != 3) {
+        printf("Usage: %s [localIP listenPort]\n", argv[0]);
         exit(0);
     }
     
     printf(" == BT Peer client == \n");
+    fflush(stdin);
+   
     init();
+    
+    if (argc < 3) {
+        getlocalsetting();
+    } else {
+        inet_aton(argv[1], &local_ip);
+        local_port = htons(atoi(argv[2]));
+    }
+
     show_help();
     strcpy(status, "Idle");
     
@@ -173,6 +221,7 @@ int main(int argc, char **argv) {
             default: 
                 printf("Something goes wrong ... \n");
         }
+        info();
     }
 
 out:

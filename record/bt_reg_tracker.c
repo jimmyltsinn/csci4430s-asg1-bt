@@ -14,7 +14,7 @@ unsigned int fileID = 0x12345678;
 //unsigned short tport = 0;
 //unsigned int listen_port = 0;
 
-/*
+
 ssize_t RecvN(int sockfd, void *buf, size_t len) {
     fd_set rfds;
     struct timeval tv;
@@ -34,10 +34,14 @@ ssize_t RecvN(int sockfd, void *buf, size_t len) {
             perror("select()");
         } else if (retval) {
             int l;
+			puts("Waiting for input ...");
             l = read(sockfd, ptr, len - read_len);
             if (l > 0) {
+				printf("Reading input of length = %d\n", l);
                 ptr += l;
                 read_len += l;
+				if (read_len == len)
+					return read_len;
             } else if (l <= 0) {
                 return read_len;
             }
@@ -49,7 +53,7 @@ ssize_t RecvN(int sockfd, void *buf, size_t len) {
     printf("Reaching the end of read() [%d] ... Something goes wrong ??\n", sockfd);
     return read_len;
 }
-
+/*
 int init_connect(struct in_addr ip, const unsigned short port) {
     int sockfd = -1;
     struct sockaddr_in tgt;
