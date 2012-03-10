@@ -76,11 +76,11 @@ int init_connect(struct in_addr ip, const unsigned short port) {
 }
 */
 
-int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
+int tracker_reg(struct in_addr tip, in_port_t tport, struct in_addr localip, in_port_t listen_port) {
     char msg[24];
     struct sockaddr_in tracker;
     int tmplen = sizeof(tracker);
-    char localip[16];
+//    char localip[16];
     int sockfd;
     unsigned int argl, tmp;
     unsigned short port;
@@ -99,7 +99,7 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     tracker.sin_addr = tip;
     tracker.sin_port = htons(tport);
    
-    inet_ntop(AF_INET, &tip, localip, 16); 
+//    inet_ntop(AF_INET, &tip, localip, 16); 
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("[REG] connect()");
         close(sockfd);
@@ -112,7 +112,7 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
 
     argl = htonl(4);
     memcpy(msg + 2, &argl, 4);
-    memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
+    memcpy(msg + 2 + 4, &localip, 4);
     
     argl = htonl(2);
     port = htons(listen_port);
@@ -156,11 +156,11 @@ int tracker_reg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     return -1;
 }
 
-int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
+int tracker_unreg(struct in_addr tip, in_port_t tport, struct in_addr localip, in_port_t listen_port) {
     char msg[24];
     struct sockaddr_in tracker;
     int tmplen = sizeof(tracker);
-    char localip[16];
+//    char localip[16];
     int sockfd;
     unsigned int argl, tmp;
     unsigned short port;
@@ -179,8 +179,8 @@ int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
     tracker.sin_addr = tip;
     tracker.sin_port = htons(tport);
    
-    inet_ntop(AF_INET, &tip, localip, 16); 
-    printf("IP = %s : %d\n", localip, tport);
+//    inet_ntop(AF_INET, &tip, localip, 16); 
+//    printf("IP = %s : %d\n", localip, tport);
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("[UNREG] connect()");
         close(sockfd);
@@ -193,7 +193,7 @@ int tracker_unreg(struct in_addr tip, in_port_t tport, in_port_t listen_port) {
 
     argl = htonl(4);
     memcpy(msg + 2, &argl, 4);
-    memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
+    memcpy(msg + 2 + 4, &localip, 4);
     
     argl = htonl(2);
     port = htons(listen_port);
@@ -394,11 +394,11 @@ int main(int argc, char **argv) {
     int sockfd;
     char *buf;
     pthread_t accept;
-    struct in_addr tip;
+    struct in_addr tip, localip;
     in_port_t tport, listen_port;
 
-    if (argc != 4) {
-        printf("Usage: %s serverIP serverPort myPort\n", argv[0]);
+    if (argc != 5) {
+        printf("Usage: %s serverIP serverPort myIP myPort\n", argv[0]);
         exit(0);
     }
     
@@ -406,11 +406,12 @@ int main(int argc, char **argv) {
  
     inet_aton(argv[1], &tip);
     tport = atoi(argv[2]);
-    listen_port = atoi(argv[3]);
+	inet_aton(argv[3], &localip);
+    listen_port = atoi(argv[4]);
 
     pthread_create(&accept, NULL, (void* (*) (void*)) thread_accept, (void*) listen_port);
 
-    tracker_reg(tip, tport, listen_port);
+    tracker_reg(tip, tport, localip, listen_port);
 
     getchar();
     
@@ -418,7 +419,7 @@ int main(int argc, char **argv) {
 
     getchar();
 
-    tracker_unreg(tip, tport, listen_port);
+    tracker_unreg(tip, tport, localip, listen_port);
     while (1);
 out: 
     close(sockfd);

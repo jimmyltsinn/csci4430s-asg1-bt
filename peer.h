@@ -14,6 +14,16 @@
 
 /* Global variable */
 unsigned int fileID;
+unsigned int fileSize;
+unsigned int nChunk;
+char *fileBitmap;
+int filefd;
+int mode;
+
+/* peer_basic.c */
+int init_job(char *filename);
+void bit_set(char *s, int pos);
+void subseed_init(char *torrent);
 
 /* peer_file.c */
 int torrent_file(char *filename);

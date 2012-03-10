@@ -15,10 +15,10 @@ void show_help() {
 }
 
 static char commands[][9] = { "add", "seed", "subseed", 
-                        "stop", "resume", "progress", 
-                        "peer", "help", "exit"
-                      };
-
+                              "stop", "resume", "progress", 
+                              "peer", "help", "exit"
+                            };
+/*
 ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
     fd_set rfds;
     struct timeval tv;
@@ -55,10 +55,21 @@ ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
     printf("Reaching the end of RecvN() [%d] ... Something goes wrong ??\n", sockfd);
     return read_len;
 }
+*/
+
+int init() {
+    fileID = 0;
+    fileSize = 0;
+    nChunk = 0;
+    mode = 0;
+    fileBitmap = NULL;
+    filefd = 0;
+
+    return 0;
+}
 
 int main(int argc, char **argv) {
     char status[20];
-    int mode = 0;
 
     if (argc != 1) {
         printf("Usage: %s\n", argv[0]);
@@ -66,6 +77,7 @@ int main(int argc, char **argv) {
     }
     
     printf(" == BT Peer client == \n");
+    init();
     show_help();
     strcpy(status, "Idle");
     
@@ -123,12 +135,21 @@ int main(int argc, char **argv) {
         switch (ipt) {
             case 1: 
                 printf("Add ... \n");
+                mode = 1;
+                strcpy(status, "Download");
+                init_job(cmd[1]);
                 break;
             case 2:
                 printf("Seed ... \n");
+                mode = 2;
+                strcpy(status, "Seed");
+                init_job(cmd[1]);
                 break;
             case 3:
                 printf("Subseed ... \n");
+                mode = 3;
+                strcpy(status, "Subseed");
+                init_job(cmd[1]);
                 break;
             case 4:
                 printf("Stop ... \n");

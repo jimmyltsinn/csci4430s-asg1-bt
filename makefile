@@ -1,14 +1,17 @@
 all: peer tracker tgen
 
+peer_basic: peer_basic.c peer.h
+	gcc peer_basic.c -c -g -o peer_basic.o
+
 peer_file: peer_file.c peer.h
 	gcc peer_file.c -c -g -o peer_file.o
 
 peer_tracker: peer_tracker.c peer.h
 	gcc peer_tracker.c -c -g -o peer_tracker.o
 
-peer: peer_tracker.o peer_file.o peer.c peer.h
+peer: peer_tracker.o peer_file.o peer_basic.o peer.c peer.h
 	gcc peer.c -c -g -lpthread -o peer.o
-	gcc peer_tracker.o peer_file.o peer.o -o peer
+	gcc peer_tracker.o peer_file.o peer.o peer_basic.o -o peer
 
 tracker: tracker.c
 	gcc tracker.c -g -o tracker -lpthread -std=gnu99
