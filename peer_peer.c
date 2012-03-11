@@ -6,25 +6,13 @@ int selecting(int sockfd) {
     read(sockfd, buf, 2);
     
     switch (buf[0]) {
-        case 0x05: 
-            /* Receive request of Bitmap */
-            peer_bitmap(sockfd);
-            break;
-        case 0x15: 
-            /* Receive a bitmap */
-            peer_bitmap_receive(sockfd);
-            break;
-        case 0x25: 
-            /* Could not receive a bitmap */
-            puts("Could not receive its bitmap ..");
-            break;
         case 0x06: 
             /* Receive request of chunk */
             peer_chunk(sockfd);
             break;
         case 0x16: 
             /* Receive chunk */
-            peer_chunk_receive(sockfd);
+            peer_chunk_receive(sockfd, 0);
             break;
         case 0x26:
             /* Cannot receive a chunk */
@@ -62,6 +50,8 @@ void peer_bitmap_ask(int sockfd) {
     char msg[10];
     unsigned int tmp;
 
+    puts("== Ask for bitmap ==");
+
     msg[0] = 0x05;
     msg[1] = 1;
 
@@ -76,10 +66,55 @@ void peer_bitmap_ask(int sockfd) {
     return;
 }
 
+void peer_getbitmap(int peerid) {
+    struct sockaddr_in tgt;
+    int sockfd; 
+    char buf[2];
+
+    memset(&tgt, 0, sizeof(tgt));
+    tgt.sin_family = AF_INET;
+    tgt.sin_addr = peers_ip[peerid];
+    tgt.sin_port = peers_port[peerid];
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("[P_GETBM] socket()");
+        return;
+    }
+
+    if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0) {
+        perror("[P_GETBM] connect()");
+        return;
+    }
+
+    peer_bitmap_ask(sockfd);
+
+    read(sockfd, buf, 2);
+    
+    switch (buf[0]) {
+        case 0x15: 
+            if (buf[1] == 1) {
+                peer_bitmap_receive(sockfd, peers_bitmap[peerid], (nchunk + 8) >> 3);
+                break;
+            }
+        case 0x25:
+            if (!buf[1]) {
+               puts("[P_GETBM] Cannot get the bitmap");
+               break;
+            }
+        default: 
+            puts("[P_GETBM] Unknown command .. ");
+    }
+
+    close(sockfd);
+}
+
 void peer_bitmap_send(int sockfd) {
     char *msg;
     unsigned int len;
     unsigned int tmp;
+
+    puts("== Send bitmap ==");
 
     len = (nchunk + 8) >> 3;
     msg = malloc(2 + 4 + len);
@@ -102,6 +137,8 @@ void peer_bitmap_send(int sockfd) {
 void peer_bitmap_reject(int sockfd) {
     char msg[2];
     
+    puts("== Reject bitmap request ==");
+
     msg[0] = 0x25;
     msg[1] = 0;
 
@@ -111,20 +148,23 @@ void peer_bitmap_reject(int sockfd) {
     return;
 }
 
-void peer_bitmap_receive(int sockfd) {
+void peer_bitmap_receive(int sockfd, char *buf, int size) {
     unsigned int len;
     unsigned int tmp;
     char *bitmap;
 
+    puts("== Receive a bitmap ==");
+
     read(sockfd, &tmp, 4);
     len = ntohl(tmp);
 
-    bitmap = malloc(len);
-    read(sockfd, bitmap, len);
+    if (size < len) {
+        puts("Length not enough ... Somethings wrong");
+        return;
+    }
 
-    close(sockfd);
+    read(sockfd, buf, len);
 
-    //TODO How to process the bitmap ...
     return;
 }
 
@@ -135,14 +175,18 @@ void peer_chunk(int sockfd) {
         peer_chunk_reject(sockfd);
         return;
     }
+
+//TODO Chunk offset    
+    peer_chunk_send(sockfd, 0);
     
-    peer_chunk_send(sockfd);
     return;
 }
 
 void peer_chunk_ask(int sockfd, int offset) {
     char msg[18];
     unsigned int tmp;
+
+    printf("== Ask for chunk %d ==\n", offset);
 
     msg[0] = 0x06;
     msg[1] = 2;
@@ -163,16 +207,42 @@ void peer_chunk_ask(int sockfd, int offset) {
     return;
 }
 
-void peer_chunk_send(int sockfd) {
+void peer_chunk_send(int sockfd, int offset) {
+    unsigned int size;
+    char *data;
+    unsigned int tmp;
+    char *msg;
+
+    puts("== Send a chunk ==");
     
+    if ((offset + (1 << CHUNK_SIZE)) > filesize) {
+        size = filesize - offset;
+    } else {
+        size = (1 << CHUNK_SIZE);
+    }
 
+    msg = malloc(2 + 4 + size);
+    
+    msg[0] = 0x16;
+    msg[1] = 1;
 
+    tmp = htonl(size);
+    memcpy(msg + 2, &tmp, 4);
+    
+    lseek(filefd, offset, SEEK_SET);
+    read(filefd, msg + 2 + 4, size);
+
+    write(sockfd, msg, size + 2 + 4);
+
+    close(sockfd);
     return;
 }
 
 void peer_chunk_reject(int sockfd) {
     char msg[2];
     
+    puts("== Reject chunk request ==");
+
     msg[0] = 0x26;
     msg[1] = 0;
 
@@ -183,7 +253,25 @@ void peer_chunk_reject(int sockfd) {
     return;
 }
 
-void peer_chunk_receive(int sockfd) {
+void peer_chunk_receive(int sockfd, int offset) {
+    unsigned int tmp;
+    unsigned int size;
+    char *data;
     
+    puts("== Receive a chunk ==");
+
+    read(sockfd, &tmp, 4);
+
+    size = ntohl(tmp);
+    data = malloc(size);
+
+    read(sockfd, data, size);
+    close(sockfd);
+    
+    lseek(filefd, offset, SEEK_SET);
+    write(filefd, data, size);
+
+    bit_set(filebitmap, off2index(offset));
+
     return;
 }

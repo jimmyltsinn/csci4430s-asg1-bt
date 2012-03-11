@@ -11,14 +11,19 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <arpa/inet.h>
+//#include <linux/list.h>
 
 #define CHUNK_SIZE 18
+#define PEER_NUMBER 5
 
 #define bit_set(s, pos) s[pos >> 3] |= 1 << (pos & 7)
 #define bit_get(s, pos) (s[pos >> 3] & (1 << (pos & 7)))
 
 #define bitc_set(c, pos) c |= 1 << (pos & 7)
 #define bitc_get(c, pos) (c & (1 << (pos & 7)))
+
+#define off2index(offset) ((offset + (1 << CHUNK_SIZE)) >> CHUNK_SIZE)
+
 /* Global variable */
 unsigned int fileid;
 unsigned int filesize;
@@ -32,6 +37,10 @@ char mode; /* using 2 bits to represent ... 1st bit is download and 2nd bit is u
 /* The IPs and ports are in network byte ordering */
 struct in_addr tracker_ip, local_ip;
 unsigned short tracker_port, local_port; 
+
+struct in_addr peers_ip[PEER_NUMBER];
+unsigned short peers_port[PEER_NUMBER];
+char *peers_bitmap[PEER_NUMBER];
 
 /* peer_basic.c */
 int read_torrent(char *torrentname);
@@ -51,12 +60,22 @@ void peer_bitmap(int sockfd);
 void peer_bitmap_ask(int sockfd);
 void peer_bitmap_send(int sockfd);
 void peer_bitmap_reject(int sockfd);
-void peer_bitmap_receive(int sockfd);
+void peer_bitmap_receive(int sockfd, char *buf, int size);
+void peer_getbitmap(int peerid);
 void peer_chunk(int sockfd);
 void peer_chunk_ask(int sockfd, int offset);
-void peer_chunk_send(int sockfd);
+void peer_chunk_send(int sockfd, int offset);
 void peer_chunk_reject(int sockfd);
-void peer_chunk_receive(int sockfd);
+void peer_chunk_receive(int sockfd, int offset);
+
+/* peer_main.c */
+void main_thread();
+void listen_thread(in_port_t sockfd);
+void handle(int sockfd);
+
+/* sort.c 
+   Code from Spring 2012 CSCI2100B+S*/
+void sort(int n, int *a);
 
 /* peer.c */
 int main(int argc, char **argv);

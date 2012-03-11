@@ -40,7 +40,7 @@ int read_torrent(char *torrentname) {
         return -1;
     }
 
-    nchunk = ((filesize + (1 << CHUNK_SIZE)) >> CHUNK_SIZE);
+    nchunk = off2index(filesize);
     filebitmap = malloc(sizeof(char) * ((nchunk + 8) >> 3));
     switch (mode) {
         case 1: /* Download */

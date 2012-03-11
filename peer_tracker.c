@@ -18,7 +18,7 @@ int tracker_reg() {
         return -1;
     }
     
-    memset(&tracker, sizeof(tracker), 0);
+    memset(&tracker, 0, sizeof(tracker));
     tracker.sin_family = AF_INET;
     tracker.sin_addr = tracker_ip;
     tracker.sin_port = tracker_port;
@@ -97,7 +97,7 @@ int tracker_unreg() {
         return -1;
     }
     
-    memset(&tracker, sizeof(tracker), 0);
+    memset(&tracker, 0, sizeof(tracker));
     tracker.sin_family = AF_INET;
     tracker.sin_addr = tracker_ip;
     tracker.sin_port = htons(tracker_port);
@@ -166,8 +166,8 @@ int tracker_list() {
     struct sockaddr_in tracker;
     char localip[16];
     unsigned int tmp;
-    unsigned int *ips;
-    unsigned short *ports;
+//    unsigned int *ips;
+//    unsigned short *ports;
 
     puts("-- Tracker List Request --");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -176,7 +176,7 @@ int tracker_list() {
         return -1;
     }
     
-    memset(&tracker, sizeof(tracker), 0);
+    memset(&tracker, 0, sizeof(tracker));
     tracker.sin_family = AF_INET;
     tracker.sin_addr = tracker_ip;
     tracker.sin_port = htons(tracker_port);
@@ -206,12 +206,16 @@ int tracker_list() {
     n = msg[1];
     printf("Number of registered peer = %d\n", n);
 
-    ips = malloc(sizeof(unsigned int) * n);
-    ports = malloc(sizeof(unsigned short) * n);
+//    ips = malloc(sizeof(unsigned int) * n);
+//    ports = malloc(sizeof(unsigned short) * n);
 
     for (i = 0; i < n; ++i) {
         unsigned int tmp;
-        char ip[16];
+
+        if (n >= PEER_NUMBER) {
+            printf("\t Too many peers. \n");
+            break;
+        }
 
         read(sockfd, &tmp, 4);
         tmp = ntohl(tmp);
@@ -220,12 +224,15 @@ int tracker_list() {
             puts("Wrong format in message length ... ");
             return -1;
         }
-        read(sockfd, ips + i, 4);
-        read(sockfd, ports + i, 2);
+        read(sockfd, &peers_ip[i].s_addr, 4);
+        read(sockfd, peers_port + i, 2);
        
-        ports[i] = ntohs(ports[i]);
-        inet_ntop(AF_INET, ips + i, ip, 16);
-        printf("[%d] %s : %d\n", i, ip, ports[i]); 
+        printf("[%d] %s : %d\n", i, inet_ntoa(peers_ip[i]), ntohs(peers_port[i])); 
+    }
+    
+    for (; i < PEER_NUMBER; ++i) {
+        peers_ip[i].s_addr = 0;
+        peers_port[i] = 0;
     }
 
     close(sockfd);
