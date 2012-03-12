@@ -21,8 +21,8 @@ peer_main.o: peer_main.c peer.h
 peer.o: peer.c peer.h
 	gcc peer.c -c -g -lpthread -o peer.o
 
-peer: peer_tracker.o peer_basic.o peer_peer.o peer_main.o sort.o peer.c peer.h
-	gcc peer_tracker.o peer.o peer_basic.o peer_peer.o peer_main.o sort.o -o peer
+peer: peer_tracker.o peer_basic.o peer_peer.o peer_main.o sort.o peer.o peer.h
+	gcc -lpthread peer_tracker.o peer.o peer_basic.o peer_peer.o peer_main.o sort.o -o peer
 
 tracker: tracker.c
 	gcc tracker.c -g -o tracker -lpthread -std=gnu99

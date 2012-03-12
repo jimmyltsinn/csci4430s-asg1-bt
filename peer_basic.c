@@ -1,5 +1,15 @@
 #include "peer.h"
 
+struct thread_list_t* thread_list_head() {
+    static struct thread_list_t *head = NULL;
+    if (!head) {
+        malloc(sizeof(struct thread_list_t));
+        INIT_LIST_HEAD(&head -> list);
+        head -> id = -1;
+    }
+    return head;
+}
+
 int read_torrent(char *torrentname) {
     int fd;
 
@@ -54,15 +64,10 @@ int read_torrent(char *torrentname) {
             break;
     }
 
+    peers_freq = malloc(sizeof(int) * nchunk);
 
     return 0;
 }
-/*
-void bit_set(char *s, int pos) {
-    s[pos >> 3] |= 1 << (pos & 7);
-    return;
-}
-*/
 
 void subseed_init(char *torrent) {
     printf("\tThere are %d chunks in %s\n", nchunk, torrent);

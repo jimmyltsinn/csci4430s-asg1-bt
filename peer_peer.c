@@ -66,49 +66,6 @@ void peer_bitmap_ask(int sockfd) {
     return;
 }
 
-void peer_getbitmap(int peerid) {
-    struct sockaddr_in tgt;
-    int sockfd; 
-    char buf[2];
-
-    memset(&tgt, 0, sizeof(tgt));
-    tgt.sin_family = AF_INET;
-    tgt.sin_addr = peers_ip[peerid];
-    tgt.sin_port = peers_port[peerid];
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("[P_GETBM] socket()");
-        return;
-    }
-
-    if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0) {
-        perror("[P_GETBM] connect()");
-        return;
-    }
-
-    peer_bitmap_ask(sockfd);
-
-    read(sockfd, buf, 2);
-    
-    switch (buf[0]) {
-        case 0x15: 
-            if (buf[1] == 1) {
-                peer_bitmap_receive(sockfd, peers_bitmap[peerid], (nchunk + 8) >> 3);
-                break;
-            }
-        case 0x25:
-            if (!buf[1]) {
-               puts("[P_GETBM] Cannot get the bitmap");
-               break;
-            }
-        default: 
-            puts("[P_GETBM] Unknown command .. ");
-    }
-
-    close(sockfd);
-}
-
 void peer_bitmap_send(int sockfd) {
     char *msg;
     unsigned int len;

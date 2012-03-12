@@ -18,44 +18,6 @@ static char commands[][9] = { "add", "seed", "subseed",
                               "stop", "resume", "progress", 
                               "peer", "help", "exit"
                             };
-/*
-ssize_t RecvN(int sockfd, void *buf, size_t len, int flags) {
-    fd_set rfds;
-    struct timeval tv;
-    int retval;
-    int read_len = 0;
-    char *ptr = (char*) buf;
-
-    FD_ZERO(&rfds);
-    FD_SET(sockfd, &rfds);
-    
-    tv.tv_sec = 2;
-    tv.tv_usec = 0;
-
-    while (read_len < len) {
-        retval = select(1, &rfds, NULL, NULL, &tv);
-        if (retval < 0) {
-            perror("select()");
-            return read_len;
-        }
-        if (retval) {
-            int l;
-            l = read(sockfd, ptr, len - read_len);
-            if (l > 0) {
-                ptr += l;
-                read_len += l;
-            } else {
-                return read_len;
-            }
-        } else {
-            printf("RecvN() [%d] No data within 2 secs. \n", sockfd);
-            return read_len;
-        }
-    }
-    printf("Reaching the end of RecvN() [%d] ... Something goes wrong ??\n", sockfd);
-    return read_len;
-}
-*/
 
 int init() {
     fileid = 0;
@@ -69,6 +31,10 @@ int init() {
     tracker_port = 0;
     local_ip.s_addr = 0;
     local_port = 0;
+
+    pthread_mutex_init(&mutex_finished, NULL);
+    pthread_mutex_init(&mutex_downloading, NULL);
+    pthread_mutex_init(&mutex_peers, NULL);
 
     filename = NULL;
 
@@ -146,9 +112,7 @@ int main(int argc, char **argv) {
             cmd[0][0] = '\0';
 
         cmd[0] = strtok(input, " ");
-//        printf("Input argument 1: %s\n", cmd[0]);
         cmd[1] = strtok(NULL, " ");
-//        printf("Input argument 2: %s\n", cmd[1]);
          
         if (!cmd[0]) {
             printf("Please enter an valid command. \n");
@@ -159,7 +123,6 @@ int main(int argc, char **argv) {
 
         while (!ipt) {
             if (i > 9) break;
-//            printf("%s vs %s\n", cmd[0], commands[i]);
             if (!strcmp(cmd[0], commands[i])) {
                 ipt = i + 1;
                 break;

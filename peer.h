@@ -11,7 +11,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <arpa/inet.h>
-//#include <linux/list.h>
+#include "list.h"
 
 #define CHUNK_SIZE 18
 #define PEER_NUMBER 5
@@ -24,6 +24,11 @@
 
 #define off2index(offset) ((offset + (1 << CHUNK_SIZE)) >> CHUNK_SIZE)
 
+struct thread_list_t {
+    struct list_head list;
+    pthread_t id;
+};
+
 /* Global variable */
 unsigned int fileid;
 unsigned int filesize;
@@ -35,6 +40,7 @@ int filefd;
 char mode; /* using 2 bits to represent ... 1st bit is download and 2nd bit is upload */
 
 pthread_mutex_t mutex_finished, mutex_downloading, mutex_peers; 
+int *peers_freq;
 
 /* The IPs and ports are in network byte ordering */
 struct in_addr tracker_ip, local_ip;
@@ -47,6 +53,7 @@ char *peers_bitmap[PEER_NUMBER];
 /* peer_basic.c */
 int read_torrent(char *torrentname);
 void subseed_init(char *torrent);
+struct thread_list_t* thread_list_head();
 
 /* peer_file.c */
 //int read_torrent(char *torrentname);
