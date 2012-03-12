@@ -19,7 +19,7 @@ void thread_listen(in_port_t port) {
         pthread_exit(0);
     }
 
-    listen(sockfd, 5);
+    listen(sockfd, PEER_NUMBER + 1);
 
     puts("[LISTEN] Start to listen to connection");
 
@@ -59,7 +59,6 @@ void handle_main(int sockfd) {
             } else {
                 puts("\tHi tracker ... fake me?! ");
             }
-            close(sockfd);    
             break;
         case 0x05:
             if (cmd[1] == 1) {
@@ -96,6 +95,7 @@ void handle_trackertest(int sockfd) {
 
     write(sockfd, msg, 2);
 
+    close(sockfd);
     return;
 }
 
@@ -164,6 +164,7 @@ void handle_chunk(int sockfd) {
         status = 1;
 
     if (!status) {
+        /* Send the chunk */
         unsigned int size, tmp;
         char *msg;
         
@@ -180,12 +181,14 @@ void handle_chunk(int sockfd) {
 
         tmp = htonl(size);
         memcpy(msg + 2, &tmp, 4);
-    
+
+// TODO Offset calculation confirm        
         lseek(filefd, offset, SEEK_SET);
         read(filefd, msg + 2 + 4, size);
 
         write(sockfd, msg, size + 2 + 4);
     } else {
+        /* Reject chunk request */
         char msg[2];
         puts("== Reject chunk request ==");
         msg[0] = 0x26;

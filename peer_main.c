@@ -49,7 +49,7 @@ int start(char *torrentname) {
     fileid = tmpl;
 
     read(fd, &tmpl, 4);
-    tracker_ip.s_addr = le32toh(tmpl);//htonl(le32toh(tmpl));
+    tracker_ip.s_addr = htonl(le32toh(tmpl));
 
     read(fd, &tmps, 2);
     tracker_port = htons(le16toh(tmps));

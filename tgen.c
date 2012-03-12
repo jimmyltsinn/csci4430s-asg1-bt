@@ -69,23 +69,26 @@ int main(int argc,char ** argv){
 
     pid = fork();
     
-    if(pid){
+    if (pid){
         char tmp[9] = "";
         int count = 0;
-
+        unsigned int taddr;
+        
         close(fds[1]);
         count = read(fds[0],tmp,8);
         if(count == 8){
             tmp[9] = 0;
             sscanf(tmp,"%p",(void**)&fileID);
             printf("fileID: \t\t%X\n",fileID);
-            wait(NULL);
+            kill(pid, SIGINT);
         } else {
             printf("Error in md5\n");
             exit(0);
         }
         write(fd,&fileID,4);
-        write(fd,&addr.s_addr,4);
+        memcpy(&taddr, &addr.s_addr, 4);
+        taddr = ntohl(taddr);
+        write(fd,&taddr,4);
         write(fd,&port,2);
         write(fd,&filename_l,4);
         write(fd,fileName,filename_l);

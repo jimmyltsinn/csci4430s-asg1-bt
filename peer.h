@@ -79,39 +79,3 @@ void getchunk(int peerid, int offset);
 int start(char *torrentname);
 void stop(); 
 
-
-/* peer_basic.c 
-int read_torrent(char *torrentname);
-void subseed_init(char *torrent);
-struct thread_list_t* thread_list_head();
-
-/* peer_file.c 
-//int read_torrent(char *torrentname);
-
-/* peer_tracker.c 
-int tracker_reg();
-int tracker_unreg();
-int tracker_list();
-void test_reply(int sockfd);
-
-/* peer_peer.c 
-void peer_bitmap(int sockfd);
-void peer_bitmap_ask(int sockfd);
-void peer_bitmap_send(int sockfd);
-void peer_bitmap_reject(int sockfd);
-void peer_bitmap_receive(int sockfd, char *buf, int size);
-void peer_getbitmap(int peerid);
-void peer_chunk(int sockfd);
-void peer_chunk_ask(int sockfd, int offset);
-void peer_chunk_send(int sockfd, int offset);
-void peer_chunk_reject(int sockfd);
-void peer_chunk_receive(int sockfd, int offset);
-
-/* peer_main.c 
-void main_thread();
-void listen_thread(in_port_t sockfd);
-void handle(int sockfd);
-
-
-/* peer.c 
-int main(int argc, char **argv) ;*/
