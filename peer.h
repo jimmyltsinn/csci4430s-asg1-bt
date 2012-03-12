@@ -50,21 +50,51 @@ struct in_addr peers_ip[PEER_NUMBER];
 unsigned short peers_port[PEER_NUMBER];
 char *peers_bitmap[PEER_NUMBER];
 
-/* peer_basic.c */
+/********** FUNCTIONS *********/
+/* sort.c 
+   Code from Spring 2012 CSCI2100B+S*/
+void sort(int n, int *a);
+
+/* peer_base.c */
+struct thread_list_t *thread_list_head();
+
+/* peer_tracker.c */
+int tracker_reg();
+int tracker_unreg();
+//int tracker_list(); //TODO Unused ??
+
+/* peer_passive.c */
+void thread_listen(in_port_t port);
+void handle_main(int sockfd);
+void handle_trackertest(int sockfd);
+void handle_bitmap(int sockfd);
+void handle_chunk(int sockfd);
+
+/* peer_accept.c */
+void thread_keeptrack();
+void getbitmap(int peerid);
+void getchunk(int peerid, int offset);
+
+/* peer_main.c */
+int start(char *torrentname);
+void stop(); 
+
+
+/* peer_basic.c 
 int read_torrent(char *torrentname);
 void subseed_init(char *torrent);
 struct thread_list_t* thread_list_head();
 
-/* peer_file.c */
+/* peer_file.c 
 //int read_torrent(char *torrentname);
 
-/* peer_tracker.c */
+/* peer_tracker.c 
 int tracker_reg();
 int tracker_unreg();
 int tracker_list();
 void test_reply(int sockfd);
 
-/* peer_peer.c */
+/* peer_peer.c 
 void peer_bitmap(int sockfd);
 void peer_bitmap_ask(int sockfd);
 void peer_bitmap_send(int sockfd);
@@ -77,14 +107,11 @@ void peer_chunk_send(int sockfd, int offset);
 void peer_chunk_reject(int sockfd);
 void peer_chunk_receive(int sockfd, int offset);
 
-/* peer_main.c */
+/* peer_main.c 
 void main_thread();
 void listen_thread(in_port_t sockfd);
 void handle(int sockfd);
 
-/* sort.c 
-   Code from Spring 2012 CSCI2100B+S*/
-void sort(int n, int *a);
 
-/* peer.c */
-int main(int argc, char **argv);
+/* peer.c 
+int main(int argc, char **argv) ;*/

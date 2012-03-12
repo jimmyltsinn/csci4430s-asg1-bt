@@ -240,14 +240,3 @@ int tracker_list() {
     return 0;
 }
 
-void test_reply(int sockfd) {
-    char msg[2];
-    
-    fprintf(stderr, "Reply test message to tracker\n"); 
-    msg[0] = 0x12;
-    msg[1] = 0;
-
-    write(sockfd, msg, 2);
-
-    return;
-}

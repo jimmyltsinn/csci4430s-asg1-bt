@@ -148,19 +148,19 @@ int main(int argc, char **argv) {
                 printf("Add ... \n");
                 mode = 1;
                 strcpy(status, "Download");
-                read_torrent(cmd[1]);
+                start(cmd[1]);
                 break;
             case 2:
                 printf("Seed ... \n");
                 mode = 2;
                 strcpy(status, "Seed");
-                read_torrent(cmd[1]);
+                start(cmd[1]);
                 break;
             case 3:
                 printf("Subseed ... \n");
                 mode = 3;
                 strcpy(status, "Subseed");
-                read_torrent(cmd[1]);
+                start(cmd[1]);
                 break;
             case 4:
                 printf("Stop ... \n");
