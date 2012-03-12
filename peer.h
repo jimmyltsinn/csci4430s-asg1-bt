@@ -34,6 +34,8 @@ int filefd;
 
 char mode; /* using 2 bits to represent ... 1st bit is download and 2nd bit is upload */
 
+pthread_mutex_t mutex_finished, mutex_downloading, mutex_peers; 
+
 /* The IPs and ports are in network byte ordering */
 struct in_addr tracker_ip, local_ip;
 unsigned short tracker_port, local_port; 
