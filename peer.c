@@ -181,6 +181,7 @@ int main(int argc, char **argv) {
                     mode = 0;
                     continue;
                 }
+                memset(filebitmap, 0, (nchunk + 8) >> 3);
                 subseed_promt(cmd[1]); 
                 strcpy(status, "Subseed");
                 start();

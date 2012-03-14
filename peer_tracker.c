@@ -211,7 +211,7 @@ int tracker_list() {
             printf("\t Too many peers. \n");
             break;
         }
-
+        
         read(sockfd, &tmp, 4);
         tmp = ntohl(tmp);
         if (tmp != 6) {
@@ -222,7 +222,7 @@ int tracker_list() {
         read(sockfd, &peers_ip[i].s_addr, 4);
         read(sockfd, peers_port + i, 2);
        
-        printf("[%d] %s : %d\n", i, inet_ntoa(peers_ip[i]), ntohs(peers_port[i])); 
+        printf("[%d] %s : %d\n", i, inet_ntoa(peers_ip[i]), peers_port[i]); 
     }
     
     for (; i < PEER_NUMBER; ++i) {

@@ -59,17 +59,18 @@ void handle_main(int sockfd) {
                handle_trackertest(sockfd);
             } else {
                 puts("\tHi tracker ... fake me?! ");
+                close(sockfd);
             }
             break;
         case 0x05:
             if (cmd[1] == 1) {
                 puts("\tHandle bitmap retrival request");
                 handle_bitmap(sockfd);
-                break;
             } else {
                 puts("\tHi ... You fake me?! ");
                 close(sockfd);
             }
+            break;
         case 0x06: 
             if (cmd[1] == 2) {
                 puts("\tHandle chunk request");
@@ -134,7 +135,7 @@ void handle_bitmap(int sockfd) {
     memcpy(msg + 2 + 4, filebitmap, len);
 
     write(sockfd, msg, 2 + 4 + len);
-    goto out;
+    goto out; 
 reject: 
     /* Reject request */
     msg = malloc(2);
@@ -151,58 +152,75 @@ out:
 }
 
 void handle_chunk(int sockfd) {
-    puts("== Receive chunk request ==");
     char *msg;
-    unsigned int status = 1, offset;
+    unsigned int offset, tmp, size;
 
-    puts("== Received bitmap request ==");
+    puts("== Receive chunk request ==");
     if (!bitc_get(mode, 2)) {
-        puts("\tI am not working ...");
-        status = 0;
-    } else {
-        read(sockfd, &status, 4);
-        status -= fileid;
+        puts("\t I do not upload ... ");
+        goto reject;
     }
-    
+
+    read(sockfd, &tmp, 4);
+    if (ntohl(tmp) - 4) {
+        puts("\tWrong length a");
+        goto reject;
+    }
+
+    read(sockfd, &tmp, 4);
+    if (tmp - fileid) {
+        puts("\tWrong fileid");
+        goto reject;
+    }
+
+    read(sockfd, &tmp, 4);
+    if (ntohl(tmp) - 4) {
+        puts("Wrong length b");
+        goto reject;
+    }
+
     read(sockfd, &offset, 4);
     offset = htonl(offset);
-    if (offset >= filesize)
-        status = 1;
-
-    if (!status) {
-        /* Send the chunk */
-        unsigned int size, tmp;
-        char *msg;
-        
-        if ((offset + (1 << CHUNK_SIZE)) > filesize) {
-            size = filesize - offset;
-        } else {
-            size = (1 << CHUNK_SIZE);
-        }
-
-        msg = malloc(2 + 4 + size);
-    
-        msg[0] = 0x16;
-        msg[1] = 1;
-
-        tmp = htonl(size);
-        memcpy(msg + 2, &tmp, 4);
-
-// TODO Offset calculation confirm        
-        lseek(filefd, offset, SEEK_SET);
-        read(filefd, msg + 2 + 4, size);
-
-        write(sockfd, msg, size + 2 + 4);
-    } else {
-        /* Reject chunk request */
-        char msg[2];
-        puts("== Reject chunk request ==");
-        msg[0] = 0x26;
-        msg[1] = 0;
-
-        write(sockfd, msg, 2);
+    if (offset >= filesize) {
+        puts("Over offset");
+        goto reject;
     }
 
+    /* Send chunk */
+    puts("-- Send chunk --");
+    if ((offset + (1 << CHUNK_SIZE)) > filesize) {
+        size = filesize - offset;
+    } else {
+        size = (1 << CHUNK_SIZE);
+    }
+
+    msg = malloc(2 + 4 + size);
+    
+    msg[0] = 0x16;
+    msg[1] = 1;
+ 
+    tmp = htonl(size);
+    memcpy(msg + 2, &tmp, 4);
+
+// TODO Offset calculation confirm        
+    lseek(filefd, offset, SEEK_SET);
+    read(filefd, msg + 2 + 4, size);
+
+    write(sockfd, msg, size + 2 + 4);
+    puts("Okay, send");
+    goto out;
+
+reject: 
+    /* Reject chunk request */
+    msg = malloc(2);
+    puts("-- Reject chunk request --");
+    msg[0] = 0x26;
+    msg[1] = 0;
+    
+    write(sockfd, msg, 2);
+
+out: 
+    free(msg);
     close(sockfd);
     return; 
 }

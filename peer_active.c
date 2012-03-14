@@ -3,7 +3,7 @@
 void main_thread() {
     while (1) {
         int i;
-        printf("\t\tMODE = %d\n", mode);
+//        printf("\t\tMODE = %d\n", mode);
         for (i = 0; i < PEER_NUMBER; ++i) {        
             if (!peers_ip[i].s_addr)
                 continue;
@@ -12,19 +12,25 @@ void main_thread() {
                 pthread_t tmp;
                 int offset;
                 
+                printf("[main] Peer %d is free. \n", i);
+                
                 pthread_mutex_lock(&mutex_dling);
                 bitc_set(dling_peer, i);
                 pthread_mutex_unlock(&mutex_dling);
                 
                 do {
                     offset = chunk_list_findfirst(i);
+                    printf("[main] Job finding: off = %d, peer = %d\n", offset, i);
                     if (offset < 0)
                         break;
                     chunk_list_del(offset, i);
                 } while (bit_get(filebitmap, offset));
 
-                if (offset < 0) 
+                if (offset < 0) {
+                    printf("[main] No suitable jobs found\n");
                     continue;
+                }
+                printf("[main] Start to download %d-th chunk from peer %d\n", offset, i);
                 argv -> peer = i;
                 argv -> offset = offset;
 
@@ -39,37 +45,55 @@ void main_thread() {
 void thread_keeptrack() {
     while (1) {
         int i, j, k;
-        
+       
+        puts("== Tracking thread activated ==");
+         
         pthread_mutex_lock(&mutex_list);
         tracker_list();
+        
+        /* Get bitmap from each peer */
+        memset(peers_bitmap[i], 0, (nchunk + 8) >> 3);
         for (i = 0; i < PEER_NUMBER; ++i) {
-            memset(peers_bitmap[i], 0, (nchunk + 8) >> 3);
-            if (!peers_ip[i].s_addr)
+            if ((!peers_ip[i].s_addr) || ((peers_ip[i].s_addr == local_ip.s_addr) && (peers_port[i] == local_port))) {
+                bitc_set(dling_peer, i);
                 continue;
+            }
             getbitmap(i);
         }
 
+        /* Count the frequency */
         memset(peers_freq, 0, sizeof(int) * nchunk);
-        for (i = 0; i < nchunk; ++i)
-            if (!bit_get(filebitmap, i))
-                for (j = 0; j < nchunk; ++j)
-                    if (bit_get(peers_bitmap[j], i))
+        for (i = 0; i < nchunk; ++i) {
+            if (!bit_get(filebitmap, i)) {
+                for (j = 0; j < PEER_NUMBER; ++j) {
+                    if (bit_get(peers_bitmap[j], i)) {
+                        printf("%d-th chunk freq + 1 by peer %d\n", i, j);
                         ++peers_freq[i];
-            else
+                    }
+                }
+            } else {
+                printf("[Track-b] I have this already\n");
                 peers_freq[i] = -1;
+            }
+        }
+
+        puts("-- Freq --");
+        for (i = 0;  i < nchunk; ++i)
+            printf("%d\t%d\n", i, peers_freq[i]);
 
         chunk_list_clear();
-        for (j = 0; j < PEER_NUMBER; ++j)
+        for (j = 1; j < PEER_NUMBER; ++j)
             for (i = 0; i < nchunk; ++i) 
                 if (peers_freq[i] == j) 
-                    for (k = 0; k < PEER_NUMBER; ++k) 
-                        if (bit_get(filebitmap, i)) {
-                            printf("[Track] %d has chunk %d\n", k, i);
-                            chunk_list_add(j, nchunk << 3);
+                    for (k = 0; k < PEER_NUMBER; ++k)
+                        if (bit_get(peers_bitmap[k], i)) {
+                            printf("[Track-c] %d has chunk %d\n", k, i);
+                            chunk_list_add(k, i << 3);
                         }
             
         pthread_mutex_unlock(&mutex_list);
         printf("Peers info updated. ");
+
         sleep(30);
     }
     return;
@@ -186,14 +210,17 @@ void getchunk(int peerid, int offset) {
     memcpy(buf + 2 + 4 + 4 + 4, &tmp, 4);
     write(sockfd, buf, 18);
    
+    puts("Request sent ... Waiting for reply");
     /* Receive the chunk ? */
     read(sockfd, buf, 2);
+    puts("Got the reply");
     switch (buf[0]) {
         case 0x16: 
             if (buf[1] == 1) {
                 goto write;
-                puts("GOTO cannot in switch .. =D");
-                break;
+            } else {
+                puts("Wrong length");
+                goto out;
             }
         case 0x26:
             if (!buf[1]) {
@@ -206,12 +233,18 @@ void getchunk(int peerid, int offset) {
     }
 
 write: 
+    puts("Get the chunk");
     read(sockfd, &tmp, 4);
     tmp = ntohl(tmp);
     data = malloc(tmp);
+   
+    puts("[GetChunk] read() block"); 
     read(sockfd, data, tmp);
-    write(filefd, data, tmp);
+    perror("[GetChunk] read()");
 
+    write(filefd, data, tmp);
+    perror("[GetChunk] write()");
+    
     pthread_mutex_lock(&mutex_bitmap);
     bit_set(filebitmap, off2index(offset));
     pthread_mutex_unlock(&mutex_bitmap);

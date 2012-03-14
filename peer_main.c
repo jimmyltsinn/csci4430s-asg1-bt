@@ -96,7 +96,7 @@ int add_job(char *torrentname) {
     filebitmap = malloc(sizeof(char) * ((nchunk + 8) >> 3));
     for (i = 0; i < PEER_NUMBER; ++i)
         peers_bitmap[i] = malloc(sizeof(char) * ((nchunk + 8) >> 3));
-    if (bitc_get(mode, 1))
+//    if (bitc_get(mode, 1)) 
     
     tmpl = 0;
     if (bitc_get(mode, 1))
@@ -144,6 +144,6 @@ void list() {
     int i;
     puts("== Tracker List ==");
     for (i = 0; i < PEER_NUMBER; ++i)
-        printf("\t%s : %d\n", inet_ntoa(peers_ip[i]), ntohs(peers_port[i]));
+        printf("\t%s : %d\n", inet_ntoa(peers_ip[i]), peers_port[i]);
     return;
 }
