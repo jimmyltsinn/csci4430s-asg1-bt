@@ -100,7 +100,7 @@ int tracker_unreg() {
     memset(&tracker, 0, sizeof(tracker));
     tracker.sin_family = AF_INET;
     tracker.sin_addr = tracker_ip;
-    tracker.sin_port = htons(tracker_port);
+    tracker.sin_port = tracker_port;
    
     inet_ntop(AF_INET, &tracker_ip, localip, 16); 
     printf("IP = %s : %d\n", localip, tracker_port);
@@ -166,8 +166,6 @@ int tracker_list() {
     struct sockaddr_in tracker;
     char localip[16];
     unsigned int tmp;
-//    unsigned int *ips;
-//    unsigned short *ports;
 
     puts("-- Tracker List Request --");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -179,7 +177,7 @@ int tracker_list() {
     memset(&tracker, 0, sizeof(tracker));
     tracker.sin_family = AF_INET;
     tracker.sin_addr = tracker_ip;
-    tracker.sin_port = htons(tracker_port);
+    tracker.sin_port = tracker_port;
    
     inet_ntop(AF_INET, &tracker_ip, localip, 16); 
     printf("IP = %s : %d\n", localip, tracker_port);
@@ -205,9 +203,6 @@ int tracker_list() {
     }
     n = msg[1];
     printf("Number of registered peer = %d\n", n);
-
-//    ips = malloc(sizeof(unsigned int) * n);
-//    ports = malloc(sizeof(unsigned short) * n);
 
     for (i = 0; i < n; ++i) {
         unsigned int tmp;

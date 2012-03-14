@@ -1,6 +1,6 @@
 #include "peer.h"
 
-void thread_listen(in_port_t port) {
+void thread_listen() {
     int sockfd, income_sockfd;
     struct sockaddr_in local, income;
 
@@ -12,7 +12,7 @@ void thread_listen(in_port_t port) {
 
     local.sin_family = AF_INET;
     local.sin_addr.s_addr = INADDR_ANY;
-    local.sin_port = htons(port);
+    local.sin_port = htons(local_port);
 
     if (bind(sockfd, (struct sockaddr *) &local, sizeof(local)) < 0) {
         perror("[LISTEN] bind()");
@@ -27,8 +27,10 @@ void thread_listen(in_port_t port) {
         int len = sizeof(income);
         pthread_t thread;
         struct thread_list_t *thread_entry = malloc(sizeof(struct thread_list_t));
-        
+
+        puts("[!!!!!] accept() block ...");        
         income_sockfd = accept(sockfd, (struct sockaddr*) &income, &len);
+        puts("[!!!!!] accept() return ...");
 
         if (income_sockfd < 0) {
             perror("[LISTEN] accept()");
@@ -44,7 +46,6 @@ void thread_listen(in_port_t port) {
 void handle_main(int sockfd) {
     char cmd[2];
     puts("== New incoming connection handling ==");
-
 
     if (read(sockfd, cmd, 2) != 2) {
         puts("Cannot read the command lol");
@@ -77,6 +78,7 @@ void handle_main(int sockfd) {
                 puts("\tHi ... You fake me again?! ");
                 close(sockfd);
             }
+            break;
         default: 
             puts("\tUnknown command .. Ignore =]");
             close(sockfd);
@@ -100,46 +102,50 @@ void handle_trackertest(int sockfd) {
 }
 
 void handle_bitmap(int sockfd) {
-    unsigned int status = 1;
+    unsigned int tmp, len;
+    char *msg;
 
     puts("== Received bitmap request ==");
     if (!mode) {
         puts("\tI am not working ...");
-        status = 0;
-    } else {
-        read(sockfd, &status, 4);
-        status -= fileid;
+        goto reject;
     }
     
-    if (!status) {
-        /* Send the bitmap */
-        unsigned int len, tmp;
-        char *msg; 
-        puts("== Send bitmap ==");
+    read(sockfd, &tmp, 4);
+    if (ntohl(tmp) - 4)
+        goto reject;
+    
+    read(sockfd, &tmp, 4);
+    if (tmp - fileid)
+        goto reject;
+      
+    /* Send the bitmap */
+    puts("== Send bitmap ==");
 
-        len = (nchunk + 8) >> 3;
-        msg = malloc(2 + 4 + tmp);
+    len = (nchunk + 8) >> 3;
+    msg = malloc(2 + 4 + len);
 
-        msg[0] = 0x15;
-        msg[1] = 1;
+    msg[0] = 0x15;
+    msg[1] = 1;
 
-        tmp = htonl(len);
-        memcpy(msg + 2, &tmp, 4);
+    tmp = htonl(len);
+    memcpy(msg + 2, &tmp, 4);
 
-        memcpy(msg + 2 + 4, filebitmap, len);
+    memcpy(msg + 2 + 4, filebitmap, len);
 
-        write(sockfd, msg, 2 + 4 + len);
-        free(msg);
-    } else {
-        /* Reject request */
-        char msg[2];    
-        puts("== Reject bitmap request ==");
-        msg[0] = 0x25;
-        msg[1] = 0;
+    write(sockfd, msg, 2 + 4 + len);
+    goto out;
+reject: 
+    /* Reject request */
+    msg = malloc(2);
+    puts("== Reject bitmap request ==");
+    msg[0] = 0x25;
+    msg[1] = 0;
 
-        write(sockfd, msg, 2);
-    }
+    write(sockfd, msg, 2);
 
+out: 
+    free(msg);
     close(sockfd);
     return;
 }

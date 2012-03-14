@@ -1,10 +1,37 @@
 #include "peer.h"
-
-void main_thread() {
-
+void start() {
+    pthread_t tmp;
+    tracker_reg();
+    pthread_create(&tmp, NULL, main_thread, NULL);
+    pthread_create(&tmp, NULL, thread_keeptrack, NULL);
 }
 
-static void start_subseed(char *torrentname) {
+void init() {
+    int i;
+
+    fileid = 0;
+    filesize = 0;
+    nchunk = 0;
+    mode = 0;
+    filebitmap = NULL;
+    filefd = 0;
+
+    tracker_ip.s_addr = 0;
+    tracker_port = 0;
+    local_ip.s_addr = 0;
+    local_port = 0;
+
+
+    pthread_mutex_init(&mutex_bitmap, NULL);
+    pthread_mutex_init(&mutex_list, NULL);
+    pthread_mutex_init(&mutex_dling, NULL);
+
+    filename = NULL;
+
+    return;
+}
+
+void subseed_promt(char *torrentname) {
     printf("\tThere are %d chunks in %s\n", nchunk, torrentname);
     printf("\tWhich chunks to upload? (start counting from 0)\n");
 
@@ -31,8 +58,8 @@ static void start_subseed(char *torrentname) {
     } while (1);
 }
 
-int start(char *torrentname) {
-    int fd;
+int add_job(char *torrentname) {
+    int fd, i;
 
     unsigned int tmpl;
     unsigned short tmps;
@@ -65,24 +92,23 @@ int start(char *torrentname) {
 
     close(fd);
 
-    filefd = open(filename, O_RDWR | O_CREAT);
+    nchunk = off2index(filesize);
+    filebitmap = malloc(sizeof(char) * ((nchunk + 8) >> 3));
+    for (i = 0; i < PEER_NUMBER; ++i)
+        peers_bitmap[i] = malloc(sizeof(char) * ((nchunk + 8) >> 3));
+    if (bitc_get(mode, 1))
+    
+    tmpl = 0;
+    if (bitc_get(mode, 1))
+        tmpl |= O_WRONLY | O_CREAT;
+    if (bitc_get(mode, 2))
+        tmpl |= O_RDONLY;
+    if (tmpl & (O_WRONLY | O_RDONLY))
+        tmpl |= O_RDWR;
+
     if (filefd < 0) {
         perror("Open target file");
         return -1;
-    }
-
-    nchunk = off2index(filesize);
-    filebitmap = malloc(sizeof(char) * ((nchunk + 8) >> 3));
-    switch (mode) {
-        case 1: /* Download */
-            memset(filebitmap, 0, (nchunk + 8) >> 3);
-            break;
-        case 2: /* Normal Seed */
-            memset(filebitmap, 0xFF, (nchunk + 8) >> 3);
-            break;
-        case 3: /* Subseed */
-            start_subseed(torrentname);
-            break;
     }
 
     peers_freq = malloc(sizeof(int) * nchunk);
@@ -104,14 +130,6 @@ void stop() {
     }
     puts("All registered thread are KILLED =D");
 
-    pthread_mutex_trylock(&mutex_finished);
-    pthread_mutex_unlock(&mutex_finished);
-    pthread_mutex_trylock(&mutex_downloading);
-    pthread_mutex_unlock(&mutex_downloading);
-    pthread_mutex_trylock(&mutex_peers);
-    pthread_mutex_unlock(&mutex_peers);
-    puts("All mutex unlocked =D");
-
     for (i = 0; i < PEER_NUMBER; ++i) {
         peers_ip[i].s_addr = 0;
         peers_port[i] = 0;
@@ -122,3 +140,10 @@ void stop() {
     return; 
 }
 
+void list() {
+    int i;
+    puts("== Tracker List ==");
+    for (i = 0; i < PEER_NUMBER; ++i)
+        printf("\t%s : %d\n", inet_ntoa(peers_ip[i]), ntohs(peers_port[i]));
+    return;
+}

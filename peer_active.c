@@ -1,10 +1,46 @@
 #include "peer.h"
 
+void main_thread() {
+    while (1) {
+        int i;
+        printf("\t\tMODE = %d\n", mode);
+        for (i = 0; i < PEER_NUMBER; ++i) {        
+            if (!peers_ip[i].s_addr)
+                continue;
+            if (!bitc_get(dling_peer, i)) {
+                struct argv_download *argv = malloc(sizeof(struct argv_download));
+                pthread_t tmp;
+                int offset;
+                
+                pthread_mutex_lock(&mutex_dling);
+                bitc_set(dling_peer, i);
+                pthread_mutex_unlock(&mutex_dling);
+                
+                do {
+                    offset = chunk_list_findfirst(i);
+                    if (offset < 0)
+                        break;
+                    chunk_list_del(offset, i);
+                } while (bit_get(filebitmap, offset));
+
+                if (offset < 0) 
+                    continue;
+                argv -> peer = i;
+                argv -> offset = offset;
+
+                pthread_create(&tmp, NULL, (void * (*) (void *)) thread_download, argv);
+            }
+        }
+        sleep(1);
+    }
+    return;
+}
+
 void thread_keeptrack() {
     while (1) {
-        int i, j;
+        int i, j, k;
         
-        pthread_mutex_lock(&mutex_peers);
+        pthread_mutex_lock(&mutex_list);
         tracker_list();
         for (i = 0; i < PEER_NUMBER; ++i) {
             memset(peers_bitmap[i], 0, (nchunk + 8) >> 3);
@@ -12,6 +48,7 @@ void thread_keeptrack() {
                 continue;
             getbitmap(i);
         }
+
         memset(peers_freq, 0, sizeof(int) * nchunk);
         for (i = 0; i < nchunk; ++i)
             if (!bit_get(filebitmap, i))
@@ -20,11 +57,37 @@ void thread_keeptrack() {
                         ++peers_freq[i];
             else
                 peers_freq[i] = -1;
-        pthread_mutex_unlock(&mutex_peers);
+
+        chunk_list_clear();
+        for (j = 0; j < PEER_NUMBER; ++j)
+            for (i = 0; i < nchunk; ++i) 
+                if (peers_freq[i] == j) 
+                    for (k = 0; k < PEER_NUMBER; ++k) 
+                        if (bit_get(filebitmap, i)) {
+                            printf("[Track] %d has chunk %d\n", k, i);
+                            chunk_list_add(j, nchunk << 3);
+                        }
+            
+        pthread_mutex_unlock(&mutex_list);
         printf("Peers info updated. ");
         sleep(30);
     }
     return;
+}
+
+void thread_main_download() {
+    
+}
+
+void thread_download(void* argv) {
+    int peer = ((struct argv_download*) argv) -> peer;
+    int offset = ((struct argv_download*) argv) -> offset;
+    getchunk(peer, offset);
+    pthread_mutex_lock(&mutex_dling);
+    bitc_reset(dling_peer, peer);
+    pthread_mutex_unlock(&mutex_dling);
+    free(argv);
+    pthread_exit(0);
 }
 
 void getbitmap(int peerid) {
@@ -67,6 +130,9 @@ void getbitmap(int peerid) {
         case 0x25:
             if (!buf[1]) {
                puts("[P_GETBM] Cannot get the bitmap");
+               pthread_mutex_lock(&mutex_dling);
+               bitc_set(dling_peer, peerid);
+               pthread_mutex_unlock(&mutex_dling);
                goto out;
             }
         default: 
@@ -142,16 +208,13 @@ void getchunk(int peerid, int offset) {
 write: 
     read(sockfd, &tmp, 4);
     tmp = ntohl(tmp);
-
     data = malloc(tmp);
-
     read(sockfd, data, tmp);
-    
     write(filefd, data, tmp);
 
-    pthread_mutex_lock(&mutex_finished);
+    pthread_mutex_lock(&mutex_bitmap);
     bit_set(filebitmap, off2index(offset));
-    pthread_mutex_unlock(&mutex_finished);
+    pthread_mutex_unlock(&mutex_bitmap);
 
     free(data);
 
