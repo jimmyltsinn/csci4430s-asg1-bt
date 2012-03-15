@@ -202,10 +202,12 @@ void handle_chunk(int sockfd) {
     tmp = htonl(size);
     memcpy(msg + 2, &tmp, 4);
 
-// TODO Offset calculation confirm        
+// TODO Offset calculation confirm  
+    printf("Using fd = %d\n", filefd);      
     lseek(filefd, offset, SEEK_SET);
+    printf("Open() ...\n");
     read(filefd, msg + 2 + 4, size);
-
+    puts("Open return");
     write(sockfd, msg, size + 2 + 4);
     puts("Okay, send");
     goto out;

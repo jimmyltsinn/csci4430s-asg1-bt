@@ -106,6 +106,8 @@ int add_job(char *torrentname) {
     if (tmpl & (O_WRONLY | O_RDONLY))
         tmpl |= O_RDWR;
 
+    filefd = open(filename, O_RDWR | O_CREAT);
+
     if (filefd < 0) {
         perror("Open target file");
         return -1;
