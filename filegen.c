@@ -5,17 +5,16 @@ int main(int argc, char **argv) {
     int filesize, i;
     FILE *fd;
     
-    if (argc != 3) {
-        printf("Usage:\t%s filename size", argv[0]);
+    if (argc != 3 && argc != 4) {
+        printf("Usage:\t%s filename size [byte]\n", argv[0]);
         return -1;
     }
     
-    filesize = atoi(argv[2]) * 256 * 1024;
+    filesize = atoi(argv[2]) * 256 * 1024 + (argc == 4 ? atoi(argv[3]) : 0);
 
-//    fd = fopen(argv[1], O_RDWR | O_CREAT | O_TRUNC, 0777);
     fd = fopen(argv[1], "w");
       
-        perror("fopen()");
+    perror("fopen()");
 
     for (i = 0; i < filesize; ++i) {
         char tmp;

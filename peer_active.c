@@ -108,6 +108,8 @@ void thread_track() {
 
         printf("[Track] size(list) = %d\n", chunk_list_cnt());
 
+        dling_peer = 0;
+
         pthread_mutex_unlock(&mutex_peer);
         printf("[Track] Peers info updated. ");
 

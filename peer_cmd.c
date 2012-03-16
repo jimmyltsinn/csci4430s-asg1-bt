@@ -58,7 +58,7 @@ int reg_torrent(char *torrentname) {
 
     close(fd);
 
-    nchunk = off2index(filesize);
+    nchunk = (filesize + (1 << CHUNK_SIZE)) >> CHUNK_SIZE;
     bitmap_size = (nchunk + 8) >> 3;
 
     return 0;
@@ -123,6 +123,7 @@ void subseed_promt(char *torrentname) {
 void start() {
     pthread_t tmp;
     tracker_reg();
+    printf("Bitc_get(mode, 1) = %d\n", bitc_get(mode, 1));
     if (bitc_get(mode, 1))
         pthread_create(&tmp, NULL, (void * (*) (void *)) thread_download_manager, NULL);
     pthread_create(&tmp, NULL, (void * (*) (void *)) thread_track, NULL);

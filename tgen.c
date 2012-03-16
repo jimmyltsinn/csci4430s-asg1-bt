@@ -55,7 +55,7 @@ int main(int argc,char ** argv){
     printf("Tracker IP: \t\t%s:%u\n",inet_ntoa(addr),port);
 
     
-    fd = open(argv[4],O_RDWR | O_CREAT | O_TRUNC,0777);
+    fd = open(argv[4],O_RDWR | O_CREAT | O_TRUNC,0644);
     if(fd < 0){
         puts(argv[4]);
         perror("Open torrent file for write");

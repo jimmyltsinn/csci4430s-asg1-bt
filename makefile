@@ -1,5 +1,8 @@
-all: peer tracker tgen filegen
+all: peer tracker tgen filegen test
 
+test: peer
+	cp peer test/
+    
 sort.o: sort.c
 	gcc sort.c -c -g -o sort.o
 

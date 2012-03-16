@@ -144,11 +144,11 @@ void handle_bitmap(int sockfd) {
     tmp = htonl(len);
     memcpy(msg + 2, &tmp, 4);
     
-    printf("[SendBitmap] Get the lock ...");
+    puts("[SendBitmap] Get the lock ...");
     pthread_mutex_lock(&mutex_filebm);
     memcpy(msg + 2 + 4, filebitmap, len);
     pthread_mutex_unlock(&mutex_filebm);
-    printf("[SendBitmap] Release the log ...");
+    puts("[SendBitmap] Release the log ...");
 
     write(sockfd, msg, 2 + 4 + len);
     goto out; 

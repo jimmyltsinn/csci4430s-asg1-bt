@@ -18,16 +18,14 @@
 #define PEER_NUMBER 5
 #define QUEUE_SIZE 40
 
-#define bit_set(s, pos) ((char*) s)[pos >> 3] |= 1 << (pos & 7)
+#define bit_set(s, pos) s[pos >> 3] |= 1 << (pos & 7)
 #define bit_get(s, pos) (s[pos >> 3] & (1 << (pos & 7)))
 
-#define bitc_set(c, pos) c |= 1 << pos
-#define bitc_reset(c, pos) c &= ~ (1 << pos)
-#define bitc_get(c, pos) (c & (1 << pos))
+#define bitc_set(c, pos) c |= 1 << (pos & 7)
+#define bitc_reset(c, pos) c &= ~ (1 << (pos & 7))
+#define bitc_get(c, pos) (c & (1 << (pos & 7)))
 
 #define off2index(offset) ((offset) >> CHUNK_SIZE)
-
-//#define read(a, b, c) do {if (read(a, b, c) != c) { puts("Something wrong in read"); exit(1);}
 
 struct thread_list_t {
     struct list_head list;
