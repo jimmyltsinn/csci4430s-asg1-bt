@@ -22,6 +22,13 @@ pthread_mutex_t files_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define FILES_MAX 10000
 char files[FILES_MAX][10];
 
+void socket_reuse(int fd) {
+    long val = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(long)) == -1) {
+        perror("setsockopt()");
+        exit(1);
+    }
+}
 
 ssize_t RecvN (int sockfd, void *buf, size_t len, int flags) {
     fd_set rfds;
@@ -272,6 +279,7 @@ void accept_thread(int portno){
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
+    socket_reuse(sockfd);
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;

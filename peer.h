@@ -13,18 +13,19 @@
 #include <arpa/inet.h>
 #include "list.h"
 
+#define CMD_TYPE 11
 #define CHUNK_SIZE 18
 #define PEER_NUMBER 5
 #define QUEUE_SIZE 40
 
-#define bit_set(s, pos) s[pos >> 3] |= 1 << pos
-#define bit_get(s, pos) (s[pos >> 3] & (1 << pos & 7))
+#define bit_set(s, pos) ((char*) s)[pos >> 3] |= 1 << (pos & 7)
+#define bit_get(s, pos) (s[pos >> 3] & (1 << (pos & 7)))
 
 #define bitc_set(c, pos) c |= 1 << pos
 #define bitc_reset(c, pos) c &= ~ (1 << pos)
 #define bitc_get(c, pos) (c & (1 << pos))
 
-#define off2index(offset) ((offset + (1 << CHUNK_SIZE)) >> CHUNK_SIZE)
+#define off2index(offset) ((offset) >> CHUNK_SIZE)
 
 struct thread_list_t {
     struct list_head list;
@@ -33,13 +34,13 @@ struct thread_list_t {
 
 struct chunk_list_t {
     struct list_head list;
-    int offset;
+    int index;
     int peer; 
 };
 
 struct argv_download {
     int peer;
-    int offset;
+    int index;
 };
 
 /* Global variable */
@@ -48,11 +49,14 @@ unsigned int filesize;
 char *filename;
 unsigned int nchunk;
 char *filebitmap;
+unsigned int bitmap_size;
 int filefd;
 
 char mode; /* using 2 bits to represent ... 1st bit is download and 2nd bit is upload */
 
-pthread_mutex_t mutex_bitmap, mutex_list, mutex_dling;
+//pthread_mutex_t mutex_bitmap, mutex_list, mutex_dling;
+
+pthread_mutex_t mutex_filebm, mutex_peer, mutex_dling, mutex_filefd;
 char dling_peer;
 //pthread_mutex_t mutex_finished, mutex_downloading, mutex_peers, mutex_work;
 int *peers_freq;
@@ -70,6 +74,17 @@ char *peers_bitmap[PEER_NUMBER];
 /* sort.c 
    Code from Spring 2012 CSCI2100B+S*/
 void sort(int n, int *a);
+
+/* peer_main.c */
+void start();
+void init();
+void subseed_promt(char *torrentname);
+int reg_torrent(char *torrentname);
+void filefd_init();
+void bitmap_init();
+void stop();
+void list();
+
 
 /* peer_base.c */
 struct thread_list_t* thread_list_head();
@@ -111,3 +126,5 @@ int add_job(char *torrent);
 void start();
 void stop(); 
 
+
+void socket_reuse(int fd);

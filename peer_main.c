@@ -1,30 +1,36 @@
 #include "peer.h"
+
 void start() {
     pthread_t tmp;
     tracker_reg();
-    pthread_create(&tmp, NULL, main_thread, NULL);
+    if (bitc_get(mode, 1))
+        pthread_create(&tmp, NULL, main_thread, NULL);
     pthread_create(&tmp, NULL, thread_keeptrack, NULL);
 }
 
 void init() {
     int i;
 
+    mode = 0;
     fileid = 0;
     filesize = 0;
+    filename = NULL;
     nchunk = 0;
-    mode = 0;
     filebitmap = NULL;
-    filefd = 0;
+    bitmap_size = 0;
+    dling_peer = 0;
+    peers_freq = NULL;
+    filefd = -1;
 
     tracker_ip.s_addr = 0;
     tracker_port = 0;
     local_ip.s_addr = 0;
     local_port = 0;
 
-
-    pthread_mutex_init(&mutex_bitmap, NULL);
-    pthread_mutex_init(&mutex_list, NULL);
+    pthread_mutex_init(&mutex_filebm, NULL);
+    pthread_mutex_init(&mutex_peer, NULL);
     pthread_mutex_init(&mutex_dling, NULL);
+    pthread_mutex_init(&mutex_filefd, NULL);
 
     filename = NULL;
 
@@ -58,13 +64,13 @@ void subseed_promt(char *torrentname) {
     } while (1);
 }
 
-int add_job(char *torrentname) {
+int reg_torrent(char *torrentname) {
     int fd, i;
 
     unsigned int tmpl;
     unsigned short tmps;
 
-    fprintf(stderr, "== Add ==\n");
+    fprintf(stderr, "== Register a job ==\n");
 
     fd = open(torrentname, O_RDONLY);
     if (fd < 0) {
@@ -72,52 +78,54 @@ int add_job(char *torrentname) {
         return -1;
     }
     
-    read(fd, &tmpl, 4);
-    fileid = tmpl;
+    read(fd, &tmpl, 4);    fileid = tmpl;
+    read(fd, &tmpl, 4);    tracker_ip.s_addr = htonl(le32toh(tmpl));
+    read(fd, &tmps, 2);    tracker_port = htons(le16toh(tmps));
+    read(fd, &tmpl, 4);    tmpl = le32toh(tmpl);
 
-    read(fd, &tmpl, 4);
-    tracker_ip.s_addr = htonl(le32toh(tmpl));
-
-    read(fd, &tmps, 2);
-    tracker_port = htons(le16toh(tmps));
-    
-    read(fd, &tmpl, 4);
-    tmpl = le32toh(tmpl);
     filename = malloc(tmpl + 1);
     read(fd, filename, tmpl);
     filename[tmpl] = '\0';
     
-    read(fd, &tmpl, 4);
-    filesize = le32toh(tmpl);
+    read(fd, &tmpl, 4);    filesize = le32toh(tmpl);
 
     close(fd);
 
     nchunk = off2index(filesize);
-    filebitmap = malloc(sizeof(char) * ((nchunk + 8) >> 3));
-    for (i = 0; i < PEER_NUMBER; ++i)
-        peers_bitmap[i] = malloc(sizeof(char) * ((nchunk + 8) >> 3));
-//    if (bitc_get(mode, 1)) 
-    
-    tmpl = 0;
-    if (bitc_get(mode, 1))
-        tmpl |= O_WRONLY | O_CREAT;
-    if (bitc_get(mode, 2))
-        tmpl |= O_RDONLY;
-    if (tmpl & (O_WRONLY | O_RDONLY))
-        tmpl |= O_RDWR;
-
-    filefd = open(filename, O_RDWR | O_CREAT);
-
-    if (filefd < 0) {
-        perror("Open target file");
-        return -1;
-    }
-
-    peers_freq = malloc(sizeof(int) * nchunk);
+    bitmap_size = (nchunk + 8) >> 3;
 
     return 0;
 }
 
+void filefd_init() {
+    char flag = 0;
+
+    if (bitc_get(mode, 1) && bitc_get(mode, 2))
+        flag |= O_CREAT | O_TRUNC | O_RDWR;    
+    else if (bitc_get(mode, 1))
+        flag |= O_CREAT | O_TRUNC | O_WRONLY;
+    else 
+        flag |= O_RDONLY;
+
+    filefd = open(filename, flag, 0644);
+    
+    if (filefd < 0) {
+        perror("Open download / upload file error");
+        exit(1);
+    }
+
+    return;
+}
+
+void bitmap_init() {
+    int i;
+    filebitmap = malloc(sizeof(char) * bitmap_size);
+    for (i = 0; i < PEER_NUMBER; ++i)
+        peers_bitmap[i] = malloc(sizeof(char) * bitmap_size);
+    peers_freq = malloc(sizeof(int) * nchunk);
+    return;
+}
+ 
 void stop() {
     int i;
     struct thread_list_t *tmp, *s;

@@ -1,4 +1,4 @@
-all: peer tracker tgen
+all: peer tracker tgen filegen
 
 sort.o: sort.c
 	gcc sort.c -c -g -o sort.o
@@ -39,5 +39,9 @@ tracker: tracker.c
 tgen: tgen.c
 	gcc tgen.c -g -o tgen
 
+filegen: filegen.c
+	gcc filegen.c -g -o filegen
+
 clean:
-	rm -f tracker tgen *.o peer 
+	rm -f tracker tgen *.o peer filegen 
+

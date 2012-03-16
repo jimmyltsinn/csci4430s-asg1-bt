@@ -43,16 +43,16 @@ struct chunk_list_t *chunk_list_head() {
     if (!head) {
         head = malloc(sizeof(struct chunk_list_t));
         INIT_LIST_HEAD(&head -> list);
-        head -> offset = -1;
+        head -> index = -1;
         head -> peer = 0;
     }   
     return head;
 }
 
-struct chunk_list_t* chunk_list_find(int offset, int peer) {
+struct chunk_list_t* chunk_list_find(int index, int peer) {
     struct chunk_list_t *tmp;
     list_for_each_entry(tmp, &chunk_list_head() -> list, list)
-        if (tmp -> offset == offset)
+        if (tmp -> index == index)
             if (tmp -> peer == peer)
                 return tmp;
     return NULL;
@@ -62,26 +62,26 @@ int chunk_list_findfirst(int peer) {
     struct chunk_list_t *tmp;
     list_for_each_entry(tmp, &chunk_list_head() -> list, list)
         if (tmp -> peer == peer)
-            return tmp -> offset;
+            return tmp -> index;
     return -1;
 }
 
-void chunk_list_add(int offset, int peer) {
+void chunk_list_add(int index, int peer) {
     struct chunk_list_t *tmp; 
     tmp = malloc(sizeof(struct chunk_list_t));
-    tmp -> offset = offset;
+    tmp -> index = index;
     tmp -> peer = peer;
     list_add_tail(&tmp -> list, &chunk_list_head() -> list);
     return;
 }
 
-void chunk_list_del(int offset, int peer) {
+void chunk_list_del(int index, int peer) {
     struct chunk_list_t *tgt;
-    tgt = chunk_list_find(offset, peer);
+    tgt = chunk_list_find(index, peer);
     if (!tgt)
         return;
     list_del(&tgt -> list);
-    tgt -> offset = -1;
+    tgt -> index = -1;
     tgt -> peer = -1;
     free(tgt);
     return;
@@ -92,4 +92,12 @@ void chunk_list_clear() {
     list_for_each_entry_safe(tgt, save, &(chunk_list_head() -> list), list)
         list_del(&tgt -> list);
     return;
+}
+
+int chunk_list_cnt() {
+    int ret = 0;
+    struct chunk_list_t *tgt;
+    list_for_each_entry(tgt, &chunk_list_head() -> list, list)
+        ++ret;
+    return ret;
 }

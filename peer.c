@@ -3,23 +3,27 @@
 void help() {
     printf("The following commands are avalible: \n");
     if (!mode) {
+        printf("\tdown [filename]   \tAdd a new download ONLY job\n");
         printf("\tadd [filename]    \tAdd a new download job\n");
         printf("\tseed [filename]   \tAdd a new seed job\n");
         printf("\tsubseed [filename]\tAdd a subseed job\n");
+    } else {
+        printf("\tinfo              \tPrint the information of current job\n");
+        printf("\tstop              \tStop the current job\n");
+        printf("\tresume            \tResume a stopped job\n");
+        printf("\tprogress          \tShow the progress of current downloading job\n");
+        printf("\tpeer              \tPrint the IP address and port of peers of current downloading job\n");
     }
-    printf("\tstop              \tStop the current job\n");
-    printf("\tresume            \tResume a stopped job\n");
-    printf("\tprogress          \tShow the progress of current downloading job\n");
-    printf("\tpeer              \tPrint the IP address and port of peers of current downloading job\n");
     printf("\thelp              \tShow this manual\n");
     printf("\texit              \tExit\n");
     return; 
 }
 
-static char commands[][9] = { "add", "seed", "subseed", 
-                              "stop", "resume", "progress", 
+static char commands[][CMD_TYPE] = { "down", "add", "seed", "subseed", 
+                              "info", "stop", "resume", "progress", 
                               "peer", "help", "exit"
                             };
+
 
 void getlocalsetting() {
     char input[18];
@@ -37,6 +41,18 @@ void getlocalsetting() {
     return;
 }
 
+void bitmap_print(char *bitmap) {
+    int i, j;
+
+    for (i = 0; i < nchunk; ++i) {
+        if (i % 48 == 0) printf("\n\t");
+        else if (i % 8 == 0) printf(" ");
+        printf("%1d", bit_get(bitmap, i) ? 1 : 0);
+    }
+    
+    printf("\n");
+}
+
 void info() {
     printf("Local IP: %s:%d\n", inet_ntoa(local_ip), ntohs(local_port));
     printf("Tracker IP: %s:%d\n", inet_ntoa(tracker_ip), ntohs(tracker_port));
@@ -47,7 +63,13 @@ void info() {
     printf("File name: %s\n", filename ? filename : "(Unknown)");
     printf("File size: %d\n", filesize);
     printf("Number of chunk: %d\n", nchunk);
+    printf("Number of byte for bitmap: %d\n", bitmap_size);
 
+    printf("Download ? %s\n", bitc_get(mode, 1) ? "YES" : "no");
+    printf("Upload ? %s\n", bitc_get(mode, 2) ? "YES" : "no");
+
+    printf("-= Bitmap =-\n");
+    bitmap_print(filebitmap);
     return;
 }
 
@@ -120,7 +142,7 @@ int main(int argc, char **argv) {
         i = 0;
 
         while (!ipt) {
-            if (i > 9) break;
+            if (i > CMD_TYPE) break;
             if (!strcmp(cmd[0], commands[i])) {
                 ipt = i + 1;
                 break;
@@ -133,89 +155,102 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        if ((ipt <= 3) && (mode)) {
+        if ((ipt > 4) && (!mode) && (ipt < 10)) {
+            printf("Please first register a torrent file. \n");
+            continue;
+        }
+
+        if ((ipt <= 4) && (mode)) {
             printf("You have already registered a torrent file and assign job. \n");
             continue;
         }
 
-        if ((ipt > 3) && (cmd[1])) {
+        if ((ipt > 4) && (cmd[1])) {
             printf("This command do not require further argument. \n");
             continue;
-        } else if ((ipt <= 3) && (!cmd[1])) {
+        } else if ((ipt <= 4) && (!cmd[1])) {
             printf("This command require .torrent file name as argument. \n");
             continue;
         }
 
         switch (ipt) {
             case 1: 
-                printf("Add ... \n");
-                if (add_job(cmd[1])) continue;
-                bitc_set(mode, 1);
-                bitc_set(mode, 2);
-                if (add_job(cmd[1])) {
-                    mode = 0;
+                printf("Down ...\n");
+                if (reg_torrent(cmd[1])) 
                     continue;
-                }
-                strcpy(status, "Download");
-                memset(filebitmap, 0, (nchunk + 8) >> 3);
+                bitc_set(mode, 1);
+                filefd_init();
+                bitmap_init();
+                memset(filebitmap, 0x00, bitmap_size);
+                strcpy(status, "D");
                 start();
                 break;
-            case 2:
-                printf("Seed ... \n");
-                if (add_job(cmd[1])) continue;
-                bitc_set(mode, 2);
-                if (add_job(cmd[1])) {
-                    mode = 0;
+            case 2: 
+                printf("Add ... \n");
+                if (reg_torrent(cmd[1]))
                     continue;
-                }
-                strcpy(status, "Seed");
-                memset(filebitmap, 0, (nchunk + 8) >> 3);
+                bitc_set(mode, 1);
+                bitc_set(mode, 2);
+                filefd_init();
+                bitmap_init();
+                memset(filebitmap, 0x00, bitmap_size);
+                strcpy(status, "D/U");
                 start();
                 break;
             case 3:
-                printf("Subseed ... \n");
-                if (add_job(cmd[1])) continue;
-                bitc_set(mode, 2);
-                bitc_set(mode, 3);
-                if (add_job(cmd[1])) {
-                    mode = 0;
+                printf("Seed ... \n");
+                if (reg_torrent(cmd[1]))
                     continue;
-                }
-                memset(filebitmap, 0, (nchunk + 8) >> 3);
-                subseed_promt(cmd[1]); 
-                strcpy(status, "Subseed");
+                bitc_set(mode, 2);
+                filefd_init();
+                bitmap_init();
+                memset(filebitmap, 0xff, bitmap_size);
+                strcpy(status, "U");
                 start();
                 break;
-            case 4:
+            case 4: 
+                printf("Subseed ... \n");
+                if (reg_torrent(cmd[1]))
+                    continue;
+                bitc_set(mode, 2);
+                filefd_init();
+                bitmap_init();
+                subseed_promt(cmd[1]);
+                strcpy(status, "sU");
+                start();
+            case 5:
+                printf("Info ...\n");
+                info();
+                break; 
+            case 6:
                 printf("Stop ... \n");
                 strcpy(status_backup, status);
-                strcpy(status, "Pause");
+                strcpy(status, "P");
                 stop();
                 break;
-            case 5:
+            case 7:
                 printf("Resume ... \n");
                 strcpy(status, status_backup);
                 start();
                 break;
-            case 6:
+            case 8:
                 printf("Progress ... \n");
                 progress();
                 break;
-            case 7: 
+            case 9: 
                 printf("Peer ... \n");
                 list();
                 break;
-            case 8: 
+            case 10:
                 printf("Help ... \n");
                 help();
                 break;
-            case 9: 
+            case 11:
                 printf("Exit ... \n");
                 goto out;
             default: 
                 printf("Something goes wrong ... \n");
         }
-        info();
     }
 out:
     printf("Bye. \n");
