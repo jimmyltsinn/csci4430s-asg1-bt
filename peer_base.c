@@ -1,5 +1,63 @@
 #include "peer.h"
 
+/* By Mole */
+void socket_reuse(int fd) {
+    long val = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(long)) == -1) {
+        perror("setsockopt()");
+        exit(1);
+    }
+}
+
+/* By Ma MingCao, from tracker.c */
+size_t recvn (int sockfd, void *buf, size_t len) {
+    fd_set rfds;
+    struct timeval tv;
+    int retval;
+    int read_len = 0;
+    char *ptr = (char*) buf;
+
+    while (read_len < len) {
+        FD_ZERO(&rfds);
+        FD_SET(sockfd, &rfds);
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+        retval = select(sockfd+1, &rfds, NULL, NULL, &tv);
+        if (retval == -1) {
+            perror("select()");
+            return 0;
+        } else if (retval) {
+            int l;
+            l = read(sockfd,ptr,len - read_len);
+            if (l > 0) {
+                ptr += l;
+                read_len+=l;
+            } else if (l <= 0) {
+                return read_len;
+            }
+        } else {
+            printf("No data within 2 seconds.\n");
+            return 0;
+        }
+    }
+    return read_len;
+}
+
+size_t sendn(int sockfd, const void *buf, size_t cnt) {
+    int ret = 0;
+    do {
+        int tmp;
+        tmp = write(sockfd, buf + ret, cnt - ret);
+        if (tmp < 0) {
+            perror("sendn()");
+            return ret;
+        }
+        ret += tmp;
+        printf("[sendn] Written %d [%d out of %d]\n", tmp, ret, cnt);
+    } while (ret < cnt);
+    return ret;
+}
+
 struct thread_list_t* thread_list_head() {
     static struct thread_list_t *head = NULL;
     if (!head) {
@@ -21,7 +79,7 @@ struct thread_list_t* thread_list_find(pthread_t id) {
 
 void thread_list_add(pthread_t id) {
     struct thread_list_t *tmp;
-    if (!thread_list_find(id)) return;
+    if (thread_list_find(id)) return;
     tmp = malloc(sizeof(struct thread_list_t));
     tmp -> id = id;
     list_add(&tmp -> list, &thread_list_head() -> list);
@@ -87,10 +145,25 @@ void chunk_list_del(int index, int peer) {
     return;
 }
 
-void chunk_list_clear() {
+void chunk_list_indexclear(int index) {
     struct chunk_list_t *tgt, *save;
     list_for_each_entry_safe(tgt, save, &(chunk_list_head() -> list), list)
+        if (tgt -> index == index) {
+            list_del(&tgt -> list);
+            tgt -> index = -1;
+            tgt -> peer = -1;
+            free(tgt);
+        }
+}
+
+void chunk_list_clear() {
+    struct chunk_list_t *tgt, *save;
+    list_for_each_entry_safe(tgt, save, &(chunk_list_head() -> list), list) {
         list_del(&tgt -> list);
+        tgt -> index = -1;
+        tgt -> peer = -1;
+        free(tgt);
+    }
     return;
 }
 

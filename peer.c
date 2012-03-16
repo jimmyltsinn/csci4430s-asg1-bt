@@ -1,28 +1,9 @@
 #include "peer.h"
 
-void help() {
-    printf("The following commands are avalible: \n");
-    if (!mode) {
-        printf("\tdown [filename]   \tAdd a new download ONLY job\n");
-        printf("\tadd [filename]    \tAdd a new download job\n");
-        printf("\tseed [filename]   \tAdd a new seed job\n");
-        printf("\tsubseed [filename]\tAdd a subseed job\n");
-    } else {
-        printf("\tinfo              \tPrint the information of current job\n");
-        printf("\tstop              \tStop the current job\n");
-        printf("\tresume            \tResume a stopped job\n");
-        printf("\tprogress          \tShow the progress of current downloading job\n");
-        printf("\tpeer              \tPrint the IP address and port of peers of current downloading job\n");
-    }
-    printf("\thelp              \tShow this manual\n");
-    printf("\texit              \tExit\n");
-    return; 
-}
-
-static char commands[][CMD_TYPE] = { "down", "add", "seed", "subseed", 
-                              "info", "stop", "resume", "progress", 
-                              "peer", "help", "exit"
-                            };
+const char commands[][CMD_TYPE] = { "down", "add", "seed", "subseed", 
+                                    "info", "stop", "resume", "progress", 
+                                    "peer", "help", "exit"
+                                    };
 
 
 void getlocalsetting() {
@@ -41,49 +22,31 @@ void getlocalsetting() {
     return;
 }
 
-void bitmap_print(char *bitmap) {
-    int i, j;
+void init() {
+    int i;
 
-    for (i = 0; i < nchunk; ++i) {
-        if (i % 48 == 0) printf("\n\t");
-        else if (i % 8 == 0) printf(" ");
-        printf("%1d", bit_get(bitmap, i) ? 1 : 0);
-    }
-    
-    printf("\n");
-}
+    mode = 0;
+    fileid = 0;
+    filesize = 0;
+    filename = NULL;
+    nchunk = 0;
+    filebitmap = NULL;
+    bitmap_size = 0;
+    dling_peer = 0;
+    peers_freq = NULL;
+    filefd = -1;
 
-void info() {
-    printf("Local IP: %s:%d\n", inet_ntoa(local_ip), ntohs(local_port));
-    printf("Tracker IP: %s:%d\n", inet_ntoa(tracker_ip), ntohs(tracker_port));
+    tracker_ip.s_addr = 0;
+    tracker_port = 0;
+    local_ip.s_addr = 0;
+    local_port = 0;
 
-    printf("\n");
+    pthread_mutex_init(&mutex_filebm, NULL);
+    pthread_mutex_init(&mutex_peer, NULL);
+    pthread_mutex_init(&mutex_dling, NULL);
+    pthread_mutex_init(&mutex_filefd, NULL);
 
-    printf("File ID: 0x%x\n", fileid);
-    printf("File name: %s\n", filename ? filename : "(Unknown)");
-    printf("File size: %d\n", filesize);
-    printf("Number of chunk: %d\n", nchunk);
-    printf("Number of byte for bitmap: %d\n", bitmap_size);
-
-    printf("Download ? %s\n", bitc_get(mode, 1) ? "YES" : "no");
-    printf("Upload ? %s\n", bitc_get(mode, 2) ? "YES" : "no");
-
-    printf("-= Bitmap =-\n");
-    bitmap_print(filebitmap);
-    return;
-}
-
-void progress() {
-    int i, j;
-    double progress;
-
-    for (i = 0; i < nchunk; ++i) 
-        if (bit_get(filebitmap, i))
-            ++j;
-    
-    progress = j / (nchunk + 1);
-
-    printf("[Progress] %f completed. ", progress);
+    filename = NULL;
 
     return;
 }
@@ -113,7 +76,7 @@ int main(int argc, char **argv) {
     help();
     strcpy(status, "Idle");
     
-    pthread_create(&tmp, NULL, thread_listen, NULL); 
+    pthread_create(&tmp, NULL, (void * (*) (void *)) thread_listen, NULL); 
     
     while (1) {
         char *cmd[2], input[127];

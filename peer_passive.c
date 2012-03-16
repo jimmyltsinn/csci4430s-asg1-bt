@@ -1,13 +1,5 @@
 #include "peer.h"
 
-void socket_reuse(int fd) {
-    long val = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(long)) == -1) {
-        perror("setsockopt()");
-        exit(1);
-    }
-}
-
 void thread_listen() {
     int sockfd, income_sockfd;
     struct sockaddr_in local, income;
@@ -125,12 +117,18 @@ void handle_bitmap(int sockfd) {
     }
 
     puts("[SendBitmap] Check argl");    
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     if (ntohl(tmp) - 4)
         goto reject;
     
     puts("[SendBitmap] Check fileid");
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     if (tmp - fileid)
         goto reject;
       
@@ -188,25 +186,39 @@ void handle_chunk(int sockfd) {
         goto reject;
     }
 
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
+
     if (ntohl(tmp) - 4) {
         puts("\t[SendChunk] Wrong length a");
         goto reject;
     }
 
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     if (tmp - fileid) {
         puts("\t[SendChunk] Wrong fileid");
         goto reject;
     }
 
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
+
     if (ntohl(tmp) - 4) {
         puts("[SendChunk] Wrong length b");
         goto reject;
     }
 
-    read(sockfd, &offset, 4);
+    if (read(sockfd, &offset, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     offset = ntohl(offset);
     if (offset >= filesize) {
         puts("[SendChunk] Over offset");
@@ -234,10 +246,18 @@ void handle_chunk(int sockfd) {
     printf("[SendChunk] Using fd = %d\n", filefd);      
     lseek(filefd, offset, SEEK_SET);
     printf("[SendChunk] Open() ...\n");
-    read(filefd, msg + 2 + 4, size);
+    if (read(filefd, msg + 2 + 4, size) != size) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     puts("[SendChunk] Open return");
     pthread_mutex_unlock(&mutex_filefd);
-    write(sockfd, msg, size + 2 + 4);
+    perror("Before write");
+    
+    tmp = sendn(sockfd, msg, size + 2 + 4);
+
+    printf("write() ret: %d (%d) \n", tmp, size + 2 + 4);
+//    printf("Writinng length = %d (should be %d) \n", sendn(sockfd, msg, size + 2 + 4), size + 2 + 4);
     puts("[SendChunk] Okay, send");
     goto out;
 

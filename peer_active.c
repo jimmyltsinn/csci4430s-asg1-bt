@@ -1,6 +1,6 @@
 #include "peer.h"
 
-void main_thread() {
+void thread_download_manager() {
     while (1) {
         int i;
 //        printf("\t\tMODE = %d\n", mode);
@@ -37,15 +37,15 @@ void main_thread() {
                 argv -> peer = i;
                 argv -> index = index;
 
-                pthread_create(&tmp, NULL, (void * (*) (void *)) thread_download, argv);
+                pthread_create(&tmp, NULL, (void * (*) (void *)) thread_download_job, argv);
             }
         }
-        sleep(1);
+        sleep(0);
     }
     return;
 }
 
-void thread_keeptrack() {
+void thread_track() {
     while (1) {
         int i, j, k;
        
@@ -116,7 +116,7 @@ void thread_keeptrack() {
     return;
 }
 
-void thread_download(void* argv) {
+void thread_download_job(void* argv) {
     int peer = ((struct argv_download*) argv) -> peer;
     int index = ((struct argv_download*) argv) -> index;
     pthread_detach(pthread_self());
@@ -164,7 +164,10 @@ void getbitmap(int peerid) {
     puts("\t[GetBitmap] Sent msg");
 
     /* Receive the bitmap ? */
-    read(sockfd, buf, 2);
+    if (read(sockfd, buf, 2) != 2) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     puts("\t[GetBitmap] Receive msg");
     switch (buf[0]) {
         case 0x15: 
@@ -185,7 +188,10 @@ void getbitmap(int peerid) {
             goto out;
     }
 
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     puts("\t[GetBitmap] Receive further msg");
     tmp = ntohl(tmp);
     if (tmp != bitmap_size) {
@@ -193,7 +199,10 @@ void getbitmap(int peerid) {
         exit(1);
     }
 
-    read(sockfd, peers_bitmap[peerid], tmp);
+    if (read(sockfd, peers_bitmap[peerid], tmp) != tmp) {
+        puts("read() return wrong length");
+        exit(1);
+    }
 
 out: 
     close(sockfd);
@@ -238,7 +247,10 @@ void getchunk(int peerid, int offset) {
    
     puts("[GetChunk] Request sent ... Waiting for reply");
     /* Receive the chunk ? */
-    read(sockfd, buf, 2);
+    if (read(sockfd, buf, 2) != 2) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     puts("[GetChunk] Got the reply");
     switch (buf[0]) {
         case 0x16: 
@@ -263,12 +275,19 @@ void getchunk(int peerid, int offset) {
 
 write: 
     puts("Get the chunk");
-    read(sockfd, &tmp, 4);
+    if (read(sockfd, &tmp, 4) != 4) {
+        puts("read() return wrong length");
+        exit(1);
+    }
     tmp = ntohl(tmp);
     data = malloc(tmp);
    
     puts("[GetChunk] read() block"); 
-    read(sockfd, data, tmp);
+    if (recvn(sockfd, data, tmp) != tmp) {
+        puts("read() return wrong length at reading data");
+        exit(1);
+    }
+
     perror("[GetChunk] read()");
 
     pthread_mutex_lock(&mutex_filefd);

@@ -27,6 +27,8 @@
 
 #define off2index(offset) ((offset) >> CHUNK_SIZE)
 
+//#define read(a, b, c) do {if (read(a, b, c) != c) { puts("Something wrong in read"); exit(1);}
+
 struct thread_list_t {
     struct list_head list;
     pthread_t id;
@@ -75,56 +77,53 @@ char *peers_bitmap[PEER_NUMBER];
    Code from Spring 2012 CSCI2100B+S*/
 void sort(int n, int *a);
 
-/* peer_main.c */
-void start();
-void init();
-void subseed_promt(char *torrentname);
-int reg_torrent(char *torrentname);
-void filefd_init();
-void bitmap_init();
-void stop();
-void list();
-
-
 /* peer_base.c */
-struct thread_list_t* thread_list_head();
-struct thread_list_t* thread_list_find(pthread_t id);
+void socket_reuse(int fd);
+size_t recvn(int sockfd, void* buf, size_t len);
+size_t sendn(int sockfd, const void *buf, size_t cnt);
+
+struct thread_list_t *thread_list_head();
+struct thread_list_t *thread_list_find(pthread_t id);
 void thread_list_add(pthread_t id);
 void thread_list_del(pthread_t id);
 
-struct chunk_list_t* chunk_list_head();
-struct chunk_list_t* chunk_list_find(int offset, int peer);
-void chunk_list_add(int offset, int peer);
-void chunk_list_del(int offset, int peer);
+struct chunk_list_t *chunk_list_head();
+struct chunk_list_t *chunk_list_find(int index, int peer);
 int chunk_list_findfirst(int peer);
+void chunk_list_add(int index, int peer);
+void chunk_list_del(int index, int peer);
 void chunk_list_clear();
+void chunk_list_indexclear(int index);
+int chunk_list_cnt();
 
-/* peer_tracker.c */
-int tracker_reg();
-int tracker_unreg();
-//int tracker_list(); //TODO Unused ??
+/* peer_cmd.c */
+void help();
+//void bitmap_print(char *bitmap);
+int reg_torrent(char *torrent);
+void filefd_init();
+void bitmap_init();
+void subseed_promt(char *torrent);
+void start();
+void stop();
+void info();
+void list();
+void progress();
+
+/* peer_active.c */
+void thread_download_manager();
+void thread_track();
+void thread_download_job(void *argv);
+void getbitmap(int peerid);
+void getchunk(int peerid, int offset);
 
 /* peer_passive.c */
 void thread_listen();
 void handle_main(int sockfd);
 void handle_trackertest(int sockfd);
 void handle_bitmap(int sockfd);
-void handle_chunk(int sockfd);
+void handle_chunk(int sockfd); 
 
-/* peer_accept.c */
-void thread_keeptrack();
-void getbitmap(int peerid);
-void getchunk(int peerid, int offset);
-
-/* peer_main.c */
-void init();
-void thread_keeptrack();
-void thread_download(void* argv);
-void thread_main_download();
-void main_thread();
-int add_job(char *torrent);
-void start();
-void stop(); 
-
-
-void socket_reuse(int fd);
+/* peer_tracker.c */
+int tracker_reg();
+int tracker_unreg();
+int tracker_list();
