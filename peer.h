@@ -11,8 +11,8 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <arpa/inet.h>
-#include "list.h"
 #include <signal.h>
+#include "list.h"
 
 #define CMD_TYPE 11
 #define CHUNK_SIZE 18
@@ -50,8 +50,8 @@ char *filename;
 unsigned int nchunk;
 char *filebitmap;
 unsigned int bitmap_size;
-int filefd;
-
+//int filefd;
+unsigned char fileflag;
 /* 8 bit for current mode 
  * 	1st bit		download
  * 	2nd bit		upload
@@ -74,10 +74,6 @@ unsigned short peers_port[PEER_NUMBER];
 char *peers_bitmap[PEER_NUMBER];
 
 /********** FUNCTIONS *********/
-/* sort.c 
-   Code from Spring 2012 CSCI2100B+S*/
-void sort(int n, int *a);
-
 /* peer_base.c */
 void socket_reuse(int fd);
 size_t recvn(int sockfd, void* buf, size_t len);
@@ -87,8 +83,6 @@ struct thread_list_t *thread_list_head();
 struct thread_list_t *thread_list_find(pthread_t id);
 void thread_list_add(pthread_t id);
 void thread_list_del(pthread_t id);
-void thread_list_show();
-
 
 struct chunk_list_t *chunk_list_head();
 struct chunk_list_t *chunk_list_find(int index, int peer);

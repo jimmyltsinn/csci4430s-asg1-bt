@@ -34,7 +34,7 @@ void init() {
     bitmap_size = 0;
     dling_peer = 0;
     peers_freq = NULL;
-    filefd = -1;
+    //filefd = -1;
 
     tracker_ip.s_addr = 0;
     tracker_port = 0;
@@ -81,8 +81,6 @@ int main(int argc, char **argv) {
     while (1) {
         char *cmd[2], input[127];
         int ipt = 0, i = 0;
-
-//        thread_list_show();
 
         printf("[%s] >> ", status);
         fflush(stdout);
@@ -141,7 +139,6 @@ int main(int argc, char **argv) {
 
         switch (ipt) {
             case 1: 
-//                printf("Down ...\n");
                 if (reg_torrent(cmd[1])) 
                     continue;
                 bitc_set(mode, 1);
@@ -153,7 +150,6 @@ int main(int argc, char **argv) {
                 start();
                 break;
             case 2: 
-//                printf("Add ... \n");
                 if (reg_torrent(cmd[1]))
                     continue;
                 bitc_set(mode, 1);
@@ -166,7 +162,6 @@ int main(int argc, char **argv) {
                 start();
                 break;
             case 3:
-//                printf("Seed ... \n");
                 if (reg_torrent(cmd[1]))
                     continue;
                 bitc_set(mode, 2);
@@ -178,7 +173,6 @@ int main(int argc, char **argv) {
                 start();
                 break;
             case 4: 
-//                printf("Subseed ... \n");
                 if (reg_torrent(cmd[1]))
                     continue;
                 bitc_set(mode, 2);
@@ -189,36 +183,29 @@ int main(int argc, char **argv) {
                 strcpy(status, "sU");
                 start();
             case 5:
-//                printf("Info ...\n");
                 info();
                 break; 
             case 6:
-//                printf("Stop ... \n");
                 strcpy(status_backup, status);
                 strcpy(status, "P");
                 bitc_reset(mode, 8);
                 stop();
                 break;
             case 7:
-//                printf("Resume ... \n");
                 strcpy(status, status_backup);
                 bitc_set(mode, 8);
                 start();
                 break;
             case 8:
-//                printf("Progress ... \n");
                 progress();
                 break;
             case 9: 
-//                printf("Peer ... \n");
                 list();
                 break;
             case 10:
-//                printf("Help ... \n");
                 help();
                 break;
             case 11:
-//                printf("Exit ... \n");
                 goto out;
             default: 
                 printf("Something goes wrong ... \n");

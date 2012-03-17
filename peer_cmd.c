@@ -37,11 +37,9 @@ int reg_torrent(char *torrentname) {
     unsigned int tmpl;
     unsigned short tmps;
 
-//    fprintf(stderr, "== Register a job ==\n");
-
     fd = open(torrentname, O_RDONLY);
     if (fd < 0) {
-//        perror("Open torrent file");
+        perror("Opening torrent file");
         return -1;
     }
     
@@ -66,20 +64,24 @@ int reg_torrent(char *torrentname) {
 
 void filefd_init() {
     char flag = 0;
+    int filefd;
 
     if (bitc_get(mode, 1) && bitc_get(mode, 2))
-        flag |= O_CREAT | O_TRUNC | O_RDWR;    
+        fileflag |= O_CREAT | O_TRUNC | O_RDWR;    
     else if (bitc_get(mode, 1))
-        flag |= O_CREAT | O_TRUNC | O_WRONLY;
+        fileflag |= O_CREAT | O_TRUNC | O_WRONLY;
     else 
-        flag |= O_RDONLY;
+        fileflag |= O_RDONLY;
 
-    filefd = open(filename, flag, 0644);
+    filefd = open(filename, fileflag, 0644);
     
     if (filefd < 0) {
         perror("Open target file");
         exit(1);
     }
+
+    close(filefd);
+    fileflag &= ~(O_TRUNC | O_CREAT);
 
     return;
 }
@@ -147,20 +149,19 @@ void stop() {
     struct thread_list_t *tmp, *s;
 
     list_for_each_entry_safe(tmp, s, &(thread_list_head() -> list), list) {
+        // TODO How to kill other threads
         printf("Waiting for join ... 0x%lx \n", tmp -> id);
         pthread_kill(tmp -> id, SIGINT);
         pthread_join(tmp -> id, NULL);
         list_del(&tmp -> list);
         free(tmp);
     }
-//    puts("All registered thread are KILLED =D");
 
     for (i = 0; i < PEER_NUMBER; ++i) {
         peers_ip[i].s_addr = 0;
         peers_port[i] = 0;
         memset(peers_bitmap[i], 0, off2index(nchunk));
     }
-//    puts("All internal variable about peers cleared. ");
 
     tracker_unreg();
 

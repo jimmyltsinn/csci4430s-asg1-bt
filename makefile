@@ -3,9 +3,6 @@ all: peer tracker tgen filegen test
 test: peer
 	cp peer test/
     
-sort.o: sort.c
-	gcc sort.c -c -g -o sort.o
-
 peer_base.o: peer.h peer_base.c
 	gcc peer_base.c -c -g -o peer_base.o
 

@@ -8,7 +8,6 @@ void thread_listen() {
     if (sockfd < 0) {
         perror("Listening socket");
         exit(1);
-//        pthread_exit(0);
     }
 
     socket_reuse(sockfd);
@@ -20,28 +19,19 @@ void thread_listen() {
     if (bind(sockfd, (struct sockaddr *) &local, sizeof(local)) < 0) {
         perror("Listening port");
         exit(1);
-//        pthread_exit(0);
     }
 
     listen(sockfd, PEER_NUMBER + 1);
-
-//    puts("[LISTEN] Start to listen to connection");
 
     while (1) {
         int len = sizeof(income);
         pthread_t thread;
         struct thread_list_t *thread_entry = malloc(sizeof(struct thread_list_t));
 
-//        puts("[!!!!!] accept() block ...");        
         income_sockfd = accept(sockfd, (struct sockaddr*) &income, &len);
-//        puts("[!!!!!] accept() return ...");
 
-        if (income_sockfd < 0) {
+        if (income_sockfd < 0)
             continue;
-//            exit(1);
-//            perror("[LISTEN] accept()");
-//            pthread_exit(0);
-        }
     
         thread_entry -> id = thread;
         pthread_create(&thread, NULL, (void * (*) (void *)) handle_main, (void *) income_sockfd);
@@ -50,45 +40,36 @@ void thread_listen() {
 
 void handle_main(int sockfd) {
     char cmd[2];
-//    printf("== New incoming connection handling ==\nfd = %d\n", sockfd);
 
     pthread_detach(pthread_self());
 
     if (read(sockfd, cmd, 2) != 2) {
-//        puts("Cannot read the command lol");
         pthread_exit(NULL);
     }
 
     switch (cmd[0]) {
         case 0x02: 
             if (!cmd[1]) {
-//               puts("\t[Handle] Test request from tracker");
                handle_trackertest(sockfd);
             } else {
-//                puts("\t[Handle] Hi tracker ... fake me?! ");
                 close(sockfd);
             }
             break;
         case 0x05:
             if (cmd[1] == 1) {
-//                puts("\t[Handle] Bitmap retrival request");
                 handle_bitmap(sockfd);
             } else {
-//                puts("\t[Handle] Hi ... You fake me?! ");
                 close(sockfd);
             }
             break;
         case 0x06: 
             if (cmd[1] == 2) {
-//                puts("\t[Handle] Chunk request");
                 handle_chunk(sockfd);
             } else {
-//                puts("\t[Handle] Hi ... You fake me again?! ");
                 close(sockfd);
             }
             break;
         default: 
-//            puts("\t[Handle] Unknown command .. Ignore =]");
             close(sockfd);
     }
 
@@ -99,7 +80,6 @@ void handle_main(int sockfd) {
 void handle_trackertest(int sockfd) {
     char msg[2];
     
-//    fprintf(stderr, "Reply test message to tracker\n"); 
     msg[0] = 0x12;
     msg[1] = 0;
 
@@ -113,30 +93,11 @@ void handle_bitmap(int sockfd) {
     unsigned int tmp, len;
     char *msg;
 
-//    puts("== Received bitmap request ==");
-    if (!bitc_get(mode, 8)) {
-//        puts("\tI am not working ...");
-        goto reject;
-    }
-
-//    puts("[SendBitmap] Check argl");    
-    if (read(sockfd, &tmp, 4) != 4) {
-//        puts("read() return wrong length");
-        exit(1);
-    }
-    if (ntohl(tmp) - 4)
-        goto reject;
-    
-//    puts("[SendBitmap] Check fileid");
-    if (read(sockfd, &tmp, 4) != 4) {
-//        puts("read() return wrong length");
-        exit(1);
-    }
-    if (tmp - ntohl(fileid))
-        goto reject;
-      
-    /* Send the bitmap */
-//    puts("== Send bitmap ==");
+    if (!bitc_get(mode, 8))             goto reject;
+    if (read(sockfd, &tmp, 4) != 4)     goto reject;
+    if (ntohl(tmp) - 4)                 goto reject;
+    if (read(sockfd, &tmp, 4) != 4)     goto reject;
+    if (tmp - ntohl(fileid))            goto reject;
 
     len = (nchunk + 8) >> 3;
     msg = malloc(2 + 4 + len);
@@ -147,11 +108,9 @@ void handle_bitmap(int sockfd) {
     tmp = htonl(len);
     memcpy(msg + 2, &tmp, 4);
     
-//    puts("[SendBitmap] Get the lock ...");
     pthread_mutex_lock(&mutex_filebm);
     memcpy(msg + 2 + 4, filebitmap, len);
     pthread_mutex_unlock(&mutex_filebm);
-//    puts("[SendBitmap] Release the log ...");
 
     write(sockfd, msg, 2 + 4 + len);
     goto out; 
@@ -159,7 +118,6 @@ void handle_bitmap(int sockfd) {
 reject: 
     /* Reject request */
     msg = malloc(2);
-//    puts("== Reject bitmap request ==");
     msg[0] = 0x25;
     msg[1] = 0;
 
@@ -174,107 +132,64 @@ out:
 void handle_chunk(int sockfd) {
     char *msg;
     unsigned int offset, tmp, size;
+    int filefd;
 
-//    puts("== Receive chunk request ==");
-    
     do {
         struct sockaddr_in tgt;
         int tmp = sizeof(tgt);
         getpeername(sockfd, (struct sockaddr*) &tgt, &tmp);
-//        printf("[!] %s : %d (%d)\n", inet_ntoa(tgt.sin_addr), ntohs(tgt.sin_port), sockfd);
     } while (0);
 
-    if (!bitc_get(mode, 2)) {
-//        puts("\t[SendChunk] I do not upload ... ");
-        goto reject;
-    }
-
-    if (read(sockfd, &tmp, 4) != 4) {
-//        puts("read() return wrong length");
-        exit(1);
-    }
-
-    if (ntohl(tmp) - 4) {
-//        puts("\t[SendChunk] Wrong length a");
-        goto reject;
-    }
-
-    if (read(sockfd, &tmp, 4) != 4) {
-//        puts("read() return wrong length");
-        exit(1);
-    }
-    if (tmp - ntohl(fileid)) {
-//        puts("\t[SendChunk] Wrong fileid");
-        goto reject;
-    }
-
-    if (read(sockfd, &tmp, 4) != 4) {
-//        puts("read() return wrong length");
-        exit(1);
-    }
-
-    if (ntohl(tmp) - 4) {
-//        puts("[SendChunk] Wrong length b");
-        goto reject;
-    }
-
-    if (read(sockfd, &offset, 4) != 4) {
-//        puts("read() return wrong length");
-        exit(1);
-    }
+    if (!bitc_get(mode, 2))             goto reject;
+    if (read(sockfd, &tmp, 4) != 4)     goto reject;
+    if (ntohl(tmp) - 4)                 goto reject;
+    if (read(sockfd, &tmp, 4) != 4)     goto reject;
+    if (tmp - ntohl(fileid))            goto reject;
+    if (read(sockfd, &tmp, 4) != 4)     goto reject;
+    if (ntohl(tmp) - 4)                 goto reject;
+    if (read(sockfd, &offset, 4) != 4)  goto reject; 
     offset = ntohl(offset);
-    if (offset >= filesize) {
-//        puts("[SendChunk] Over offset");
-        goto reject;
-    }
+    if (offset >= filesize)             goto reject;
     
     /* Send chunk */
-//    printf("-- Send chunk %d --\n", offset);
     if ((offset + (1 << CHUNK_SIZE)) > filesize) {
         size = filesize - offset;
     } else {
         size = (1 << CHUNK_SIZE);
     }
 
+    filefd = open(filename, fileflag);
+
     msg = malloc(2 + 4 + size);
-    
     msg[0] = 0x16;
     msg[1] = 1;
- 
     tmp = htonl(size);
     memcpy(msg + 2, &tmp, 4);
 
-// TODO Offset calculation confirm  
     pthread_mutex_lock(&mutex_filefd);
-//    printf("[SendChunk] Using fd = %d\n", filefd);      
     lseek(filefd, offset, SEEK_SET);
-//    printf("[SendChunk] Open() ...\n");
     if (read(filefd, msg + 2 + 4, size) != size) {
-//        puts("read() return wrong length");
-        exit(1);
+        pthread_mutex_unlock(&mutex_filefd);
+        free(msg);
+        goto reject;
     }
-//    puts("[SendChunk] Open return");
-    pthread_mutex_unlock(&mutex_filefd);
-//    perror("Before write");
     
-    tmp = sendn(sockfd, msg, size + 2 + 4);
+    pthread_mutex_unlock(&mutex_filefd);
+    
+    close(filefd);
+    sendn(sockfd, msg, size + 2 + 4);
 
-//    printf("write() ret: %d (%d) \n", tmp, size + 2 + 4);
-//    printf("Writinng length = %d (should be %d) \n", sendn(sockfd, msg, size + 2 + 4), size + 2 + 4);
-//    puts("[SendChunk] Okay, send");
     goto out;
 
 reject: 
     /* Reject chunk request */
     msg = malloc(2);
-//    puts("-- Reject chunk request --");
     msg[0] = 0x26;
     msg[1] = 0;
     
     write(sockfd, msg, 2);
 
 out:
-//    printf("[SendChunk] Close the fd\n");
     free(msg);
     close(sockfd);
     return; 
