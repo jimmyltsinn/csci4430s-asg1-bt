@@ -81,6 +81,9 @@ int main(int argc, char **argv) {
     while (1) {
         char *cmd[2], input[127];
         int ipt = 0, i = 0;
+
+//        thread_list_show();
+
         printf("[%s] >> ", status);
         fflush(stdout);
 
@@ -138,10 +141,11 @@ int main(int argc, char **argv) {
 
         switch (ipt) {
             case 1: 
-                printf("Down ...\n");
+//                printf("Down ...\n");
                 if (reg_torrent(cmd[1])) 
                     continue;
                 bitc_set(mode, 1);
+                bitc_set(mode, 8);
                 filefd_init();
                 bitmap_init();
                 memset(filebitmap, 0x00, bitmap_size);
@@ -149,11 +153,12 @@ int main(int argc, char **argv) {
                 start();
                 break;
             case 2: 
-                printf("Add ... \n");
+//                printf("Add ... \n");
                 if (reg_torrent(cmd[1]))
                     continue;
                 bitc_set(mode, 1);
                 bitc_set(mode, 2);
+                bitc_set(mode, 8);
                 filefd_init();
                 bitmap_init();
                 memset(filebitmap, 0x00, bitmap_size);
@@ -161,10 +166,11 @@ int main(int argc, char **argv) {
                 start();
                 break;
             case 3:
-                printf("Seed ... \n");
+//                printf("Seed ... \n");
                 if (reg_torrent(cmd[1]))
                     continue;
                 bitc_set(mode, 2);
+                bitc_set(mode, 8);
                 filefd_init();
                 bitmap_init();
                 memset(filebitmap, 0xff, bitmap_size);
@@ -172,50 +178,54 @@ int main(int argc, char **argv) {
                 start();
                 break;
             case 4: 
-                printf("Subseed ... \n");
+//                printf("Subseed ... \n");
                 if (reg_torrent(cmd[1]))
                     continue;
                 bitc_set(mode, 2);
+                bitc_set(mode, 8);
                 filefd_init();
                 bitmap_init();
                 subseed_promt(cmd[1]);
                 strcpy(status, "sU");
                 start();
             case 5:
-                printf("Info ...\n");
+//                printf("Info ...\n");
                 info();
                 break; 
             case 6:
-                printf("Stop ... \n");
+//                printf("Stop ... \n");
                 strcpy(status_backup, status);
                 strcpy(status, "P");
+                bitc_reset(mode, 8);
                 stop();
                 break;
             case 7:
-                printf("Resume ... \n");
+//                printf("Resume ... \n");
                 strcpy(status, status_backup);
+                bitc_set(mode, 8);
                 start();
                 break;
             case 8:
-                printf("Progress ... \n");
+//                printf("Progress ... \n");
                 progress();
                 break;
             case 9: 
-                printf("Peer ... \n");
+//                printf("Peer ... \n");
                 list();
                 break;
             case 10:
-                printf("Help ... \n");
+//                printf("Help ... \n");
                 help();
                 break;
             case 11:
-                printf("Exit ... \n");
+//                printf("Exit ... \n");
                 goto out;
             default: 
                 printf("Something goes wrong ... \n");
-        }
+        }       
     }
 out:
     printf("Bye. \n");
     return 0;
 }
+

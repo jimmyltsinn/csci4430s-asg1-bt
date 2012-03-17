@@ -9,12 +9,12 @@ int tracker_reg() {
     unsigned int argl, tmp;
     unsigned short port;
 
-    fprintf(stderr, "== Peer register ==\n");
-    fprintf(stderr, "\tConnection\n");
+//    fprintf(stderr, "== Peer register ==\n");
+//    fprintf(stderr, "\tConnection\n");
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("[REG] socket()");
+//        perror("[REG] socket()");
         return -1;
     }
     
@@ -24,12 +24,12 @@ int tracker_reg() {
     tracker.sin_port = tracker_port;
    
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
-        perror("[REG] connect()");
+//        perror("[REG] connect()");
         close(sockfd);
         return -1;
     }
 
-    fprintf(stderr, "\tCompose the message\n");
+//    fprintf(stderr, "\tCompose the message\n");
     msg[0] = 0x01;
     msg[1] = 3;
 
@@ -47,34 +47,34 @@ int tracker_reg() {
     memcpy(msg + 2 + 4 + 4 + 4 + 2, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &tmp, 4);
 
-    fprintf(stderr, "\tSent the message\n");
+//    fprintf(stderr, "\tSent the message\n");
     write(sockfd, msg, 24);
     
-    fprintf(stderr, "\tReceive the return\n");
+//    fprintf(stderr, "\tReceive the return\n");
     if (read(sockfd, msg, 2) != 2) {
-        puts("No response ...");
+//        puts("No response ...");
         close(sockfd);
         return -1;
     }
     if (msg[1]) {
-        puts("Wrong type response ... Check the tracker. b");
+//        puts("Wrong type response ... Check the tracker. b");
         close(sockfd);
         return -1;
     }
 
     switch (msg[0]) {
         case 0x11: 
-            puts("Peer has registered to tracker successfully. ");
+//            puts("Peer has registered to tracker successfully. ");
             close(sockfd);
             return 0;
         case 0x21: 
-            puts("Peer could not be registered to tracker. ");
+//            puts("Peer could not be registered to tracker. ");
             break;
-        default: 
-            puts("Wrong type response ... Check the tracker. c");
+        default: ;
+//            puts("Wrong type response ... Check the tracker. c");
     }
 
-    fprintf(stderr, "\tClose the socket\n");
+//    fprintf(stderr, "\tClose the socket\n");
     close(sockfd);
     return -1;
 }
@@ -88,12 +88,12 @@ int tracker_unreg() {
     unsigned int argl, tmp;
     unsigned short port;
 
-    fprintf(stderr, "-- Peer unregister --\n");
-    fprintf(stderr, "\tConnection\n");
+//    fprintf(stderr, "-- Peer unregister --\n");
+//    fprintf(stderr, "\tConnection\n");
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("[UNREG] socket()");
+//        perror("[UNREG] socket()");
         return -1;
     }
     
@@ -103,14 +103,14 @@ int tracker_unreg() {
     tracker.sin_port = tracker_port;
    
     inet_ntop(AF_INET, &tracker_ip, localip, 16); 
-    printf("IP = %s : %d\n", localip, tracker_port);
+//    printf("IP = %s : %d\n", localip, tracker_port);
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
-        perror("[UNREG] connect()");
+//        perror("[UNREG] connect()");
         close(sockfd);
         return -1;
     }
 
-    fprintf(stderr, "\tCompose the message\n");
+//    fprintf(stderr, "\tCompose the message\n");
     msg[0] = 0x03;
     msg[1] = 3;
 
@@ -128,34 +128,34 @@ int tracker_unreg() {
     memcpy(msg + 2 + 4 + 4 + 4 + 2, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4 + 2 + 4, &tmp, 4);
 
-    fprintf(stderr, "\tSent the message\n");
+//    fprintf(stderr, "\tSent the message\n");
     write(sockfd, msg, 24);
     
-    fprintf(stderr, "\tReceive the return\n");
+//    fprintf(stderr, "\tReceive the return\n");
     if (read(sockfd, msg, 2) != 2) {
-        puts("No response ...");
+//        puts("No response ...");
         close(sockfd);
         return -1;
     }
     if (msg[1]) {
-        puts("Wrong type response ... Check the tracker. b");
+//        puts("Wrong type response ... Check the tracker. b");
         close(sockfd);
         return -1;
     }
 
     switch (msg[0]) {
         case 0x13: 
-            puts("Peer has unregistered from tracker. ");
+//            puts("Peer has unregistered from tracker. ");
             close(sockfd);
             return 0;
         case 0x23: 
-            puts("Peer could not be unregistered from tracker. ");
+//            puts("Peer could not be unregistered from tracker. ");
             break;
-        default: 
-            puts("Wrong type response ... Check the tracker. c");
+        default: ;
+//            puts("Wrong type response ... Check the tracker. c");
     }
 
-    fprintf(stderr, "\tClose the socket\n");
+//    fprintf(stderr, "\tClose the socket\n");
     close(sockfd);
     return -1;
 }
@@ -167,10 +167,10 @@ int tracker_list() {
     char localip[16];
     unsigned int tmp;
 
-    puts("-- Tracker List Request --");
+//    puts("-- Tracker List Request --");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("[LIST] socket()");
+//        perror("[LIST] socket()");
         return -1;
     }
     
@@ -180,9 +180,9 @@ int tracker_list() {
     tracker.sin_port = tracker_port;
    
     inet_ntop(AF_INET, &tracker_ip, localip, 16); 
-    printf("IP = %s : %d\n", localip, tracker_port);
+//    printf("IP = %s : %d\n", localip, tracker_port);
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
-        perror("[LIST] connect()");
+//        perror("[LIST] connect()");
         close(sockfd);
         return -1;
     }
@@ -197,32 +197,32 @@ int tracker_list() {
 
     read(sockfd, msg, 2);
     if (msg[0] != 0x14) {
-        puts("Wrong type response ... Check the tracker. ");
+//        puts("Wrong type response ... Check the tracker. ");
         close(sockfd);
         return -1;
     }
     n = msg[1];
-    printf("Number of registered peer = %d\n", n);
+//    printf("Number of registered peer = %d\n", n);
 
     for (i = 0; i < n; ++i) {
         unsigned int tmp;
 
         if (n >= PEER_NUMBER) {
-            printf("\t Too many peers. \n");
+//            printf("\t Too many peers. \n");
             break;
         }
         
         read(sockfd, &tmp, 4);
         tmp = ntohl(tmp);
         if (tmp != 6) {
-            printf("tmp = %x\n", tmp);
-            puts("Wrong format in message length ... ");
+//            printf("tmp = %x\n", tmp);
+//            puts("Wrong format in message length ... ");
             return -1;
         }
         read(sockfd, &peers_ip[i].s_addr, 4);
         read(sockfd, peers_port + i, 2);
        
-        printf("[%d] %s : %d\n", i, inet_ntoa(peers_ip[i]), peers_port[i]); 
+//        printf("[%d] %s : %d\n", i, inet_ntoa(peers_ip[i]), peers_port[i]); 
     }
     
     for (; i < PEER_NUMBER; ++i) {

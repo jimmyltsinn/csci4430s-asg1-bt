@@ -12,11 +12,11 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include "list.h"
+#include <signal.h>
 
 #define CMD_TYPE 11
 #define CHUNK_SIZE 18
 #define PEER_NUMBER 5
-#define QUEUE_SIZE 40
 
 #define bit_set(s, pos) s[pos >> 3] |= 1 << (pos & 7)
 #define bit_get(s, pos) (s[pos >> 3] & (1 << (pos & 7)))
@@ -52,19 +52,22 @@ char *filebitmap;
 unsigned int bitmap_size;
 int filefd;
 
-char mode; /* using 2 bits to represent ... 1st bit is download and 2nd bit is upload */
+/* 8 bit for current mode 
+ * 	1st bit		download
+ * 	2nd bit		upload
+ * 	8th bit		work
+ */
+char mode;
 
 //pthread_mutex_t mutex_bitmap, mutex_list, mutex_dling;
 
 pthread_mutex_t mutex_filebm, mutex_peer, mutex_dling, mutex_filefd;
 char dling_peer;
-//pthread_mutex_t mutex_finished, mutex_downloading, mutex_peers, mutex_work;
 int *peers_freq;
 
 /* The IPs and ports are in network byte ordering */
 struct in_addr tracker_ip, local_ip;
 unsigned short tracker_port, local_port; 
-int download_queue[QUEUE_SIZE];
 
 struct in_addr peers_ip[PEER_NUMBER];
 unsigned short peers_port[PEER_NUMBER];
@@ -84,6 +87,8 @@ struct thread_list_t *thread_list_head();
 struct thread_list_t *thread_list_find(pthread_t id);
 void thread_list_add(pthread_t id);
 void thread_list_del(pthread_t id);
+void thread_list_show();
+
 
 struct chunk_list_t *chunk_list_head();
 struct chunk_list_t *chunk_list_find(int index, int peer);

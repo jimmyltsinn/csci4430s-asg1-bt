@@ -37,15 +37,15 @@ int reg_torrent(char *torrentname) {
     unsigned int tmpl;
     unsigned short tmps;
 
-    fprintf(stderr, "== Register a job ==\n");
+//    fprintf(stderr, "== Register a job ==\n");
 
     fd = open(torrentname, O_RDONLY);
     if (fd < 0) {
-        perror("Open torrent file");
+//        perror("Open torrent file");
         return -1;
     }
     
-    read(fd, &tmpl, 4);    fileid = tmpl;
+    read(fd, &tmpl, 4);    fileid = le32toh(tmpl);
     read(fd, &tmpl, 4);    tracker_ip.s_addr = htonl(le32toh(tmpl));
     read(fd, &tmps, 2);    tracker_port = htons(le16toh(tmps));
     read(fd, &tmpl, 4);    tmpl = le32toh(tmpl);
@@ -58,7 +58,7 @@ int reg_torrent(char *torrentname) {
 
     close(fd);
 
-    nchunk = (filesize + (1 << CHUNK_SIZE)) >> CHUNK_SIZE;
+    nchunk = (filesize + (1 << CHUNK_SIZE) - 1) >> CHUNK_SIZE;
     bitmap_size = (nchunk + 8) >> 3;
 
     return 0;
@@ -77,7 +77,7 @@ void filefd_init() {
     filefd = open(filename, flag, 0644);
     
     if (filefd < 0) {
-        perror("Open download / upload file error");
+        perror("Open target file");
         exit(1);
     }
 
@@ -120,13 +120,26 @@ void subseed_promt(char *torrentname) {
     } while (1);
 }
 
+void sighandler(int sig) {
+    if (sig == SIGINT)
+        pthread_exit(NULL);
+}
+
 void start() {
     pthread_t tmp;
-    tracker_reg();
-    printf("Bitc_get(mode, 1) = %d\n", bitc_get(mode, 1));
-    if (bitc_get(mode, 1))
+    if (tracker_reg()) 
+        exit(1);
+
+    signal(SIGINT, sighandler);
+
+    if (bitc_get(mode, 1)) {
         pthread_create(&tmp, NULL, (void * (*) (void *)) thread_download_manager, NULL);
+    }
+    thread_list_add(tmp);
+
     pthread_create(&tmp, NULL, (void * (*) (void *)) thread_track, NULL);
+    thread_list_add(tmp);
+    return;
 }
 
 void stop() {
@@ -134,22 +147,22 @@ void stop() {
     struct thread_list_t *tmp, *s;
 
     list_for_each_entry_safe(tmp, s, &(thread_list_head() -> list), list) {
-        if (i = pthread_kill(tmp -> id, 2)) {
-            printf("pthread_kill(%lu): %s\n", tmp -> id, strerror(i));
-        } else {
-            printf("Thread %lu killed. \n", tmp -> id);
-            list_del(&tmp -> list);
-            free(tmp);
-        }
+        printf("Waiting for join ... 0x%lx \n", tmp -> id);
+        pthread_kill(tmp -> id, SIGINT);
+        pthread_join(tmp -> id, NULL);
+        list_del(&tmp -> list);
+        free(tmp);
     }
-    puts("All registered thread are KILLED =D");
+//    puts("All registered thread are KILLED =D");
 
     for (i = 0; i < PEER_NUMBER; ++i) {
         peers_ip[i].s_addr = 0;
         peers_port[i] = 0;
         memset(peers_bitmap[i], 0, off2index(nchunk));
     }
-    puts("All internal variable about peers cleared. ");
+//    puts("All internal variable about peers cleared. ");
+
+    tracker_unreg();
 
     return; 
 }
@@ -175,27 +188,31 @@ void info() {
 
 void list() {
     int i;
-    puts("== Tracker List ==");
+    puts("== Peer List ==");
     for (i = 0; i < PEER_NUMBER; ++i)
-        printf("\t%s : %d\n", inet_ntoa(peers_ip[i]), peers_port[i]);
+        if (peers_ip[i].s_addr)
+            printf("%s\t%s : %d\n", ((peers_ip[i].s_addr == local_ip.s_addr && peers_port[i] == htons(local_port)) ? "Local >" : ""), inet_ntoa(peers_ip[i]), peers_port[i]);
     return;
 }
 
 void progress() {
-    int i, j;
+    int i, cnt;
     double percent;
+
+    cnt = 0;
 
     for (i = 0; i < nchunk; ++i) 
         if (bit_get(filebitmap, i))
-            ++j;
-    
-    percent = (double) j / (nchunk + 1);
+            ++cnt;
+   
+    percent = (double) cnt / (nchunk) * 100;
 
-    printf("== Progress Report ==\n");
-    printf("File Bitmap\n");
+    printf("== Progress ==\n");
+    printf("\tFile Bitmap");
     bitmap_print(filebitmap);
-
-    printf("\t%f %c has been completed. ", percent, '%');
+    
+    printf("\tNumber of chunk finished = %d\n", cnt);
+    printf("\t%f %c has been completed. \n", percent, '%');
 
     return;
 }

@@ -4,7 +4,7 @@
 void socket_reuse(int fd) {
     long val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(long)) == -1) {
-        perror("setsockopt()");
+//        perror("setsockopt()");
         exit(1);
     }
 }
@@ -24,7 +24,7 @@ size_t recvn (int sockfd, void *buf, size_t len) {
         tv.tv_usec = 0;
         retval = select(sockfd+1, &rfds, NULL, NULL, &tv);
         if (retval == -1) {
-            perror("select()");
+//            perror("select()");
             return 0;
         } else if (retval) {
             int l;
@@ -36,7 +36,7 @@ size_t recvn (int sockfd, void *buf, size_t len) {
                 return read_len;
             }
         } else {
-            printf("No data within 2 seconds.\n");
+//            printf("No data within 2 seconds.\n");
             return 0;
         }
     }
@@ -49,11 +49,11 @@ size_t sendn(int sockfd, const void *buf, size_t cnt) {
         int tmp;
         tmp = write(sockfd, buf + ret, cnt - ret);
         if (tmp < 0) {
-            perror("sendn()");
+//            perror("sendn()");
             return ret;
         }
         ret += tmp;
-        printf("[sendn] Written %d [%d out of %d]\n", tmp, ret, cnt);
+//        printf("[sendn] Written %d [%d out of %d]\n", tmp, ret, cnt);
     } while (ret < cnt);
     return ret;
 }
@@ -79,11 +79,20 @@ struct thread_list_t* thread_list_find(pthread_t id) {
 
 void thread_list_add(pthread_t id) {
     struct thread_list_t *tmp;
+//    printf("[thread_list_add] adding 0x%lx\n", id);
     if (thread_list_find(id)) return;
     tmp = malloc(sizeof(struct thread_list_t));
     tmp -> id = id;
     list_add(&tmp -> list, &thread_list_head() -> list);
     return;
+}
+
+void thread_list_show() {
+    struct thread_list_t *tmp;
+//    puts("== Show Thread ==");
+    list_for_each_entry(tmp, &thread_list_head() -> list, list) {
+//        printf("ShowThread = %lx\n", tmp -> id);
+    }
 }
 
 void thread_list_del(pthread_t id) {
