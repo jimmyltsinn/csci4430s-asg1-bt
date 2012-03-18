@@ -134,6 +134,7 @@ void getbitmap(int peerid) {
     }
 
     if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0) {
+		close(sockfd);
         return;
     }
 
@@ -202,7 +203,8 @@ void getchunk(int peerid, int offset) {
 	}
 
     if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0) {
-        return;
+        close(sockfd);
+		return;
 	}
 
     /* Send request of chunk */
@@ -220,7 +222,6 @@ void getchunk(int peerid, int offset) {
    
     /* Receive the chunk ? */
     if (recv(sockfd, buf, 2, 0) != 2) {
-		perror("read()");
         goto out;
 	}
     
