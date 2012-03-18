@@ -50,8 +50,8 @@ char *filename;
 unsigned int nchunk;
 char *filebitmap;
 unsigned int bitmap_size;
-//int filefd;
-unsigned char fileflag;
+pthread_t main_thread;
+//unsigned char fileflag;
 /* 8 bit for current mode 
  * 	1st bit		download
  * 	2nd bit		upload

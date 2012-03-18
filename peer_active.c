@@ -63,7 +63,7 @@ void thread_track() {
         /* Get bitmap from each peer */
         for (i = 0; i < PEER_NUMBER; ++i) {
             memset(peers_bitmap[i], 0, bitmap_size);
-            if ((!peers_ip[i].s_addr) || ((peers_ip[i].s_addr == local_ip.s_addr) && (peers_port[i] == htons(local_port)))) {
+            if ((!peers_ip[i].s_addr) || ((peers_ip[i].s_addr == local_ip.s_addr) && (peers_port[i] == local_port))) {
                 bitc_set(dling_peer, i);
                 continue;
             }
@@ -197,11 +197,13 @@ void getchunk(int peerid, int offset) {
     tgt.sin_port = peers_port[peerid];
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
+    if (sockfd < 0) {
         return;
+	}
 
-    if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0)
+    if (connect(sockfd, (struct sockaddr*) &tgt, sizeof(tgt)) < 0) {
         return;
+	}
 
     /* Send request of chunk */
     buf[0] = 0x06;
@@ -217,8 +219,10 @@ void getchunk(int peerid, int offset) {
     write(sockfd, buf, 18);
    
     /* Receive the chunk ? */
-    if (read(sockfd, buf, 2) != 2)
+    if (recv(sockfd, buf, 2, 0) != 2) {
+		perror("read()");
         goto out;
+	}
     
     switch (buf[0]) {
         case 0x16: 
@@ -239,27 +243,31 @@ write:
     if (read(sockfd, &tmp, 4) != 4) 
         goto out;
 
-    filefd = open(filename, fileflag);
-    
     tmp = ntohl(tmp);
     data = malloc(tmp);
    
-    if (recvn(sockfd, data, tmp) != tmp)
+    if (recvn(sockfd, data, tmp) != tmp) {
+		free(data);
         goto out;
+	}
 
     pthread_mutex_lock(&mutex_filefd);
+    
+	filefd = open(filename, O_WRONLY);
     lseek(filefd, offset, SEEK_SET);
     write(filefd, data, tmp);
+    
+    close(filefd);
+
     pthread_mutex_unlock(&mutex_filefd);
 
-    free(data);
-
-    close(filefd);
-out: 
-    pthread_mutex_lock(&mutex_filebm);
+	pthread_mutex_lock(&mutex_filebm);
     bit_set(filebitmap, off2index(offset));
     pthread_mutex_unlock(&mutex_filebm);
 
+    free(data);
+
+out: 
     pthread_mutex_lock(&mutex_dling);
     bitc_reset(dling_peer, peerid);
     pthread_mutex_unlock(&mutex_dling);

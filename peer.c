@@ -41,6 +41,7 @@ void init() {
     local_ip.s_addr = 0;
     local_port = 0;
 
+	main_thread = pthread_self();
     pthread_mutex_init(&mutex_filebm, NULL);
     pthread_mutex_init(&mutex_peer, NULL);
     pthread_mutex_init(&mutex_dling, NULL);
@@ -146,7 +147,7 @@ int main(int argc, char **argv) {
                 filefd_init();
                 bitmap_init();
                 memset(filebitmap, 0x00, bitmap_size);
-                strcpy(status, "D");
+                strcpy(status, "Download only peer");
                 start();
                 break;
             case 2: 
@@ -158,7 +159,7 @@ int main(int argc, char **argv) {
                 filefd_init();
                 bitmap_init();
                 memset(filebitmap, 0x00, bitmap_size);
-                strcpy(status, "D/U");
+                strcpy(status, "Normal peer (D/U)");
                 start();
                 break;
             case 3:
@@ -169,7 +170,7 @@ int main(int argc, char **argv) {
                 filefd_init();
                 bitmap_init();
                 memset(filebitmap, 0xff, bitmap_size);
-                strcpy(status, "U");
+                strcpy(status, "Seed");
                 start();
                 break;
             case 4: 
@@ -180,7 +181,7 @@ int main(int argc, char **argv) {
                 filefd_init();
                 bitmap_init();
                 subseed_promt(cmd[1]);
-                strcpy(status, "sU");
+                strcpy(status, "Subseed");
                 start();
             case 5:
                 info();

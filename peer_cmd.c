@@ -65,14 +65,13 @@ int reg_torrent(char *torrentname) {
 void filefd_init() {
     char flag = 0;
     int filefd;
+	int fileflag = 0;
 
-    if (bitc_get(mode, 1) && bitc_get(mode, 2))
-        fileflag |= O_CREAT | O_TRUNC | O_RDWR;    
-    else if (bitc_get(mode, 1))
-        fileflag |= O_CREAT | O_TRUNC | O_WRONLY;
-    else 
-        fileflag |= O_RDONLY;
-
+	if (bitc_get(mode, 1))
+		fileflag |= O_CREAT | O_TRUNC | O_RDWR;
+	else 
+		fileflag |= O_RDONLY;
+	
     filefd = open(filename, fileflag, 0644);
     
     if (filefd < 0) {
@@ -81,7 +80,6 @@ void filefd_init() {
     }
 
     close(filefd);
-    fileflag &= ~(O_TRUNC | O_CREAT);
 
     return;
 }
@@ -123,8 +121,14 @@ void subseed_promt(char *torrentname) {
 }
 
 void sighandler(int sig) {
-    if (sig == SIGINT)
+    if (sig == SIGINT) {
+		if (pthread_self() == main_thread) {
+			stop();
+			printf("\nBye. \n");
+			exit(0);
+		}
         pthread_exit(NULL);
+	}
 }
 
 void start() {
@@ -136,8 +140,8 @@ void start() {
 
     if (bitc_get(mode, 1)) {
         pthread_create(&tmp, NULL, (void * (*) (void *)) thread_download_manager, NULL);
+	    thread_list_add(tmp);
     }
-    thread_list_add(tmp);
 
     pthread_create(&tmp, NULL, (void * (*) (void *)) thread_track, NULL);
     thread_list_add(tmp);
@@ -150,7 +154,6 @@ void stop() {
 
     list_for_each_entry_safe(tmp, s, &(thread_list_head() -> list), list) {
         // TODO How to kill other threads
-        printf("Waiting for join ... 0x%lx \n", tmp -> id);
         pthread_kill(tmp -> id, SIGINT);
         pthread_join(tmp -> id, NULL);
         list_del(&tmp -> list);
@@ -192,7 +195,7 @@ void list() {
     puts("== Peer List ==");
     for (i = 0; i < PEER_NUMBER; ++i)
         if (peers_ip[i].s_addr)
-            printf("%s\t%s : %d\n", ((peers_ip[i].s_addr == local_ip.s_addr && peers_port[i] == htons(local_port)) ? "Local >" : ""), inet_ntoa(peers_ip[i]), peers_port[i]);
+            printf("%s\t%s : %d\n", ((peers_ip[i].s_addr == local_ip.s_addr && peers_port[i] == local_port) ? "Local >" : ""), inet_ntoa(peers_ip[i]), ntohs(peers_port[i]));
     return;
 }
 

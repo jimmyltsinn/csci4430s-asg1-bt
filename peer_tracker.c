@@ -23,6 +23,7 @@ int tracker_reg() {
     if (connect(sockfd, (struct sockaddr*) &tracker, sizeof(tracker)) < 0) {
         perror("Connect to tracker");
         close(sockfd);
+		info();
         return -1;
     }
 
@@ -34,7 +35,7 @@ int tracker_reg() {
     memcpy(msg + 2 + 4, &local_ip, 4);
     
     argl = htonl(2);
-    port = htons(local_port);
+    port = local_port;
     memcpy(msg + 2 + 4 + 4, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4, &port, 2);
     
@@ -104,7 +105,7 @@ int tracker_unreg() {
     memcpy(msg + 2 + 4, &tracker.sin_addr, 4);
     
     argl = htonl(2);
-    port = htons(local_port);
+    port = local_port;
     memcpy(msg + 2 + 4 + 4, &argl, 4);
     memcpy(msg + 2 + 4 + 4 + 4, &port, 2);
     

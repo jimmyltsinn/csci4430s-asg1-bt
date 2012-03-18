@@ -14,7 +14,7 @@ void thread_listen() {
 
     local.sin_family = AF_INET;
     local.sin_addr.s_addr = INADDR_ANY;
-    local.sin_port = htons(local_port);
+    local.sin_port = local_port;
 
     if (bind(sockfd, (struct sockaddr *) &local, sizeof(local)) < 0) {
         perror("Listening port");
@@ -158,8 +158,6 @@ void handle_chunk(int sockfd) {
         size = (1 << CHUNK_SIZE);
     }
 
-    filefd = open(filename, fileflag);
-
     msg = malloc(2 + 4 + size);
     msg[0] = 0x16;
     msg[1] = 1;
@@ -167,16 +165,16 @@ void handle_chunk(int sockfd) {
     memcpy(msg + 2, &tmp, 4);
 
     pthread_mutex_lock(&mutex_filefd);
+    filefd = open(filename, O_RDONLY);
     lseek(filefd, offset, SEEK_SET);
     if (read(filefd, msg + 2 + 4, size) != size) {
         pthread_mutex_unlock(&mutex_filefd);
         free(msg);
         goto reject;
     }
-    
+    close(filefd);
     pthread_mutex_unlock(&mutex_filefd);
     
-    close(filefd);
     sendn(sockfd, msg, size + 2 + 4);
 
     goto out;
