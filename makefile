@@ -1,8 +1,5 @@
-all: peer tracker tgen filegen test
+all: peer tracker tgen filegen
 
-test: peer
-	cp peer test/
-    
 peer_base.o: peer.h peer_base.c
 	gcc peer_base.c -c -g -o peer_base.o
 
