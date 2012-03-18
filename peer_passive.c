@@ -134,12 +134,6 @@ void handle_chunk(int sockfd) {
     unsigned int offset, tmp, size;
     int filefd;
 
-    do {
-        struct sockaddr_in tgt;
-        int tmp = sizeof(tgt);
-        getpeername(sockfd, (struct sockaddr*) &tgt, &tmp);
-    } while (0);
-
     if (!bitc_get(mode, 2))             goto reject;
     if (read(sockfd, &tmp, 4) != 4)     goto reject;
     if (ntohl(tmp) - 4)                 goto reject;

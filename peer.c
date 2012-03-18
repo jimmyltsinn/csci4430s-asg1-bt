@@ -187,15 +187,19 @@ int main(int argc, char **argv) {
                 info();
                 break; 
             case 6:
-                strcpy(status_backup, status);
-                strcpy(status, "P");
-                bitc_reset(mode, 8);
-                stop();
+				if (bitc_get(mode, 8)) {
+	                strcpy(status_backup, status);
+    	            strcpy(status, "Pause");
+        	        bitc_reset(mode, 8);
+            	    stop();
+				}
                 break;
             case 7:
-                strcpy(status, status_backup);
-                bitc_set(mode, 8);
-                start();
+				if (!bitc_get(mode, 8)) {
+	                strcpy(status, status_backup);
+    	            bitc_set(mode, 8);
+        	        start();
+				}
                 break;
             case 8:
                 progress();
